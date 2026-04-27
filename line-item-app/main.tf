@@ -1,5 +1,6 @@
-# S3 Bucket ==========================================================================
-resource "aws_s3_bucket" "line_item_app" {
+# S3 bucket =================================================================
+
+resource "aws_s3_bucket" "app_bucket" {
   bucket = "line-item-app"
 
   tags = {
@@ -7,9 +8,8 @@ resource "aws_s3_bucket" "line_item_app" {
   }
 }
 
-# Encrypt state at rest
-resource "aws_s3_bucket_server_side_encryption_configuration" "line_item_app_encryption" {
-  bucket = aws_s3_bucket.line_item_app.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "app_bucket_encryption" {
+  bucket = aws_s3_bucket.app_bucket.id
 
   rule {
     bucket_key_enabled = true
@@ -21,56 +21,91 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "line_item_app_enc
   }
 }
 
-# Block public access 
-resource "aws_s3_bucket_public_access_block" "line_item_app_public_access" {
-  bucket = aws_s3_bucket.line_item_app.id
+resource "aws_s3_bucket_public_access_block" "app_bucket_public_access" {
+  bucket = aws_s3_bucket.app_bucket.id
 
   block_public_acls       = true
   ignore_public_acls      = true
-  block_public_policy     = false # Must be false to allow your IP policy
-  restrict_public_buckets = false # Must be false to allow your IP policy
+  block_public_policy     = true
+  restrict_public_buckets = true
+}
+
+# Define access policy so CloudFront can access the bucket
+data "aws_iam_policy_document" "app_bucket_cloudfront_policy_document" {
+  statement {
+    sid    = "AllowCloudFrontServicePrincipalReadWrite"
+    effect = "Allow"
+
+    principals {
+      type = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.app_bucket.arn}/*"]
+
+    condition {
+      test = "StringEquals"
+      variable = "AWS:SourceArn"
+      values = [aws_cloudfront_distribution.cloudfront_app_bucket_distribution.arn]
+    }
+  }
+}
+
+# Apply the policy to the S3 bucket
+resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
+  bucket = aws_s3_bucket.app_bucket.id
+  policy = data.aws_iam_policy_document.app_bucket_cloudfront_policy_document.json
 }
 
 
-# Enable static website
-resource "aws_s3_bucket_website_configuration" "line_item_static_website" {
-  bucket = aws_s3_bucket.line_item_app.id
 
-  index_document {
-    suffix = "index.html"
+
+# Cloundfront distribution =================================================================
+
+resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
+  name = "line-item-app-s3-oac-policy"
+  origin_access_control_origin_type = "s3"
+  signing_behavior = "always"
+  signing_protocol = "sigv4"
+}
+
+resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
+  comment = "line_item_app_bucket_distribution"
+
+  origin {
+    domain_name = aws_s3_bucket.app_bucket.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.cloudfront_oac_policy.id
+    origin_id = aws_s3_bucket.app_bucket.bucket
   }
 
-  error_document {
-    key = "index.html"
-  }
-}
+  enabled = true
+  default_root_object = "index.html"
 
-locals {
-  ip_address = "69.117.151.90"
-}
+  default_cache_behavior {
+    allowed_methods = ["GET", "HEAD"]
+    cached_methods = ["GET", "HEAD"]
+    target_origin_id = aws_s3_bucket.app_bucket.bucket // must match the origin_id above (a single Cloudfront distrution can have multiple origins, this link id is required for proper caching behavior)
 
-# Attach the IP-Restricted Bucket Policy
-resource "aws_s3_bucket_policy" "line_item_allow_specific_ip" {
-  bucket = aws_s3_bucket.line_item_app.id
+    forwarded_values {
+      query_string = false
 
-  # Ensure this policy is applied AFTER the public access block is modified
-  depends_on = [aws_s3_bucket_public_access_block.line_item_app_public_access]
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "AllowSpecificIPOnly"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.line_item_app.arn}/*"
-        Condition = {
-          IpAddress = {
-            "aws:SourceIp" = "${local.ip_address}/32" # Replace with your public IP
-          }
-        }
+      cookies { 
+        forward = "none" 
       }
-    ]
-  })
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "whitelist"
+      locations        = ["US"]
+    }
+  }
+
+  viewer_certificate { 
+    cloudfront_default_certificate = true 
+  }
 }
