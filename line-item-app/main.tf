@@ -1,4 +1,4 @@
-# S3 bucket =================================================================
+# ============================================= S3 Bucket =============================================
 resource "aws_s3_bucket" "app_bucket" {
   bucket = "line-item-app"
 
@@ -60,7 +60,8 @@ resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
 
 
 
-# Cloundfront distribution =================================================================
+# ============================================= Cloundfront distribution =============================================
+# (see example in docs here: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution#s3-origin)
 locals {
   app_domain = "line-item.app"
 }
