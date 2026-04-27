@@ -61,7 +61,52 @@ resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
 
 
 # Cloundfront distribution =================================================================
+locals {
+  app_domain = "line-item.app"
+}
 
+# Route 53 DNS zone for applying custom domain
+resource "aws_route53_zone" "app_route53_zone" {
+  name = local.app_domain
+}
+
+# SSL cert for custom domain
+resource "aws_acm_certificate" "line_item_ssl_cert" {
+  provider          = aws.us_east_1
+  domain_name       = local.app_domain
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Add records in Route 53 to validate the certificate
+resource "aws_route53_record" "line_item_ssl_route53_cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.line_item_ssl_cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id         = aws_route53_zone.app_route53_zone.zone_id
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 60
+  allow_overwrite = true
+}
+
+# This resource triggers the actual validation process and waits for it to complete
+resource "aws_acm_certificate_validation" "line_item_ssl_route53_cert_validation_waiter" {
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.line_item_ssl_cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.line_item_ssl_route53_cert_validation : record.fqdn]
+}
+
+# OAC policy for the Cloudfront Distribution
 resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
   name = "line-item-app-s3-oac-policy"
   origin_access_control_origin_type = "s3"
@@ -69,6 +114,7 @@ resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
   signing_protocol = "sigv4"
 }
 
+# Cloudfront Distribution
 resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
   comment = "line_item_app_bucket_distribution"
 
@@ -80,6 +126,7 @@ resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
 
   enabled = true
   default_root_object = "index.html"
+  aliases = ["${local.app_domain}"]
 
   // don't cache index.html, so that it is always fetched from s3
   ordered_cache_behavior {
@@ -113,10 +160,16 @@ resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
   }
 
   viewer_certificate { 
-    cloudfront_default_certificate = true 
+    acm_certificate_arn      = aws_acm_certificate.line_item_ssl_cert.arn // SSL certificate for custom domain created above
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
+
+  # This ensures the cert is fully issued BEFORE Terraform tries to use the SSL cert, otherwise 'apply' would fail
+  depends_on = [aws_acm_certificate_validation.line_item_ssl_route53_cert_validation_waiter]
 }
 
+# Function to rewrite all requests to index.html file
 resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
   name    = "spa-rewrite"
   runtime = "cloudfront-js-1.0"
@@ -136,5 +189,19 @@ resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
       return request;
   }
   EOF
+}
+
+# DNS records to point to the CloudFront distribution
+resource "aws_route53_record" "app_route53_record" {
+  for_each = aws_cloudfront_distribution.cloudfront_app_bucket_distribution.aliases
+  zone_id  = aws_route53_zone.app_route53_zone.zone_id
+  name     = each.value
+  type     = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.cloudfront_app_bucket_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.cloudfront_app_bucket_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
 }
 
