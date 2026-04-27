@@ -66,6 +66,7 @@ locals {
 }
 
 # Route 53 DNS zone for applying custom domain
+# MANUAL STEP REQUIRED: after this is created, must update the nameservers in GoDaddy to the 4 name servers of the Route 53 zone
 resource "aws_route53_zone" "app_route53_zone" {
   name = local.app_domain
 }
