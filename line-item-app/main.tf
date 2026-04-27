@@ -1,5 +1,4 @@
 # S3 bucket =================================================================
-
 resource "aws_s3_bucket" "app_bucket" {
   bucket = "line-item-app"
 
@@ -82,20 +81,28 @@ resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
   enabled = true
   default_root_object = "index.html"
 
+  // don't cache index.html, so that it is always fetched from s3
+  ordered_cache_behavior {
+    path_pattern     = "/index.html"
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = aws_s3_bucket.app_bucket.bucket // must match the origin_id above (a single Cloudfront distrution can have multiple origins, this link id is required for proper caching behavior)
+    cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" // Managed-CachingDisabled
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  // default cache behavior for all other files
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD"]
     cached_methods = ["GET", "HEAD"]
     target_origin_id = aws_s3_bucket.app_bucket.bucket // must match the origin_id above (a single Cloudfront distrution can have multiple origins, this link id is required for proper caching behavior)
-
-    forwarded_values {
-      query_string = false
-
-      cookies { 
-        forward = "none" 
-      }
-    }
-
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" // Managed-CachingOptimized 
     viewer_protocol_policy = "redirect-to-https"
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.cloudfront_spa_rewrite.arn
+    }
   }
 
   restrictions {
@@ -109,3 +116,25 @@ resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
     cloudfront_default_certificate = true 
   }
 }
+
+resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
+  name    = "spa-rewrite"
+  runtime = "cloudfront-js-1.0"
+  comment = "Rewrite all non-file paths to index.html for SPA routing"
+  publish = true
+  code    = <<EOF
+  function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      
+      // If the URI doesn't look like a file (no dot in the last segment),
+      // rewrite it to /index.html
+      if (!uri.includes('.')) {
+          request.uri = '/index.html';
+      }
+      
+      return request;
+  }
+  EOF
+}
+
