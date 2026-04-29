@@ -207,3 +207,48 @@ resource "aws_route53_record" "app_route53_record" {
   }
 }
 
+# ============================================= IAM User for CI/CD =============================================
+resource "aws_iam_user" "github_actions_user" {
+  name          = "github-actions-user"
+  path          = "/"
+  force_destroy = true # Allows destroying user even if they have non-Terraform managed keys
+}
+
+data "aws_iam_policy_document" "github_actions_user_s3_policy_document" {
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::${aws_s3_bucket.app_bucket.id}"]
+  }
+
+  statement {
+    actions   = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject"
+    ]
+    resources = ["arn:aws:s3:::${aws_s3_bucket.app_bucket.id}/*"]
+  }
+}
+
+resource "aws_iam_policy" "github_actions_user_s3_policy" {
+  name   = "github-actions-s3-deploy-policy"
+  policy = data.aws_iam_policy_document.github_actions_user_s3_policy_document.json
+}
+
+resource "aws_iam_user_policy_attachment" "github_actions_user_s3_policy_attachment" {
+  user       = aws_iam_user.github_actions_user.name
+  policy_arn = aws_iam_policy.github_actions_user_s3_policy.arn
+}
+
+resource "aws_iam_access_key" "github_actions_user_access_key" {
+  user = aws_iam_user.github_actions_user.name
+}
+
+output "access_key_id" {
+  value = aws_iam_access_key.github_actions_user_access_key.id
+}
+
+output "secret_access_key" {
+  value     = aws_iam_access_key.github_actions_user_access_key.secret
+  sensitive = true
+}
