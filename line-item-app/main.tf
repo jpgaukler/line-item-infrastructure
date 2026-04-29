@@ -193,12 +193,3 @@ resource "aws_iam_user_policy_attachment" "github_actions_user_s3_policy_attachm
 resource "aws_iam_access_key" "github_actions_user_access_key" {
   user = aws_iam_user.github_actions_user.name
 }
-
-output "access_key_id" {
-  value = aws_iam_access_key.github_actions_user_access_key.id
-}
-
-output "secret_access_key" {
-  value     = aws_iam_access_key.github_actions_user_access_key.secret
-  sensitive = true
-}
