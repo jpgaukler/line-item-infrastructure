@@ -29,29 +29,6 @@ resource "aws_s3_bucket_public_access_block" "app_bucket_public_access" {
   restrict_public_buckets = true
 }
 
-# Define access policy so CloudFront can access the bucket
-data "aws_iam_policy_document" "app_bucket_cloudfront_policy_document" {
-  statement {
-    sid    = "AllowCloudFrontServicePrincipalReadWrite"
-    effect = "Allow"
-
-    principals {
-      type = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-
-    actions = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.app_bucket.arn}/*"]
-
-    condition {
-      test = "StringEquals"
-      variable = "AWS:SourceArn"
-      values = [aws_cloudfront_distribution.cloudfront_app_bucket_distribution.arn]
-    }
-  }
-}
-
-# Apply the policy to the S3 bucket
 resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
   bucket = aws_s3_bucket.app_bucket.id
   policy = data.aws_iam_policy_document.app_bucket_cloudfront_policy_document.json
@@ -130,17 +107,6 @@ resource "aws_cloudfront_distribution" "cloudfront_app_bucket_distribution" {
   default_root_object = "index.html"
   aliases = ["${local.app_domain}"]
 
-  // don't cache index.html, so that it is always fetched from s3
-  ordered_cache_behavior {
-    path_pattern     = "/index.html"
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = aws_s3_bucket.app_bucket.bucket // must match the origin_id above (a single Cloudfront distrution can have multiple origins, this link id is required for proper caching behavior)
-    cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" // Managed-CachingDisabled
-    viewer_protocol_policy = "redirect-to-https"
-  }
-
-  // default cache behavior for all other files
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD"]
     cached_methods = ["GET", "HEAD"]
@@ -212,22 +178,6 @@ resource "aws_iam_user" "github_actions_user" {
   name          = "github-actions-user"
   path          = "/"
   force_destroy = true # Allows destroying user even if they have non-Terraform managed keys
-}
-
-data "aws_iam_policy_document" "github_actions_user_s3_policy_document" {
-  statement {
-    actions   = ["s3:ListBucket"]
-    resources = ["arn:aws:s3:::${aws_s3_bucket.app_bucket.id}"]
-  }
-
-  statement {
-    actions   = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject"
-    ]
-    resources = ["arn:aws:s3:::${aws_s3_bucket.app_bucket.id}/*"]
-  }
 }
 
 resource "aws_iam_policy" "github_actions_user_s3_policy" {
