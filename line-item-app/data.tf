@@ -18,7 +18,7 @@ data "aws_iam_policy_document" "app_bucket_cloudfront_policy_document" {
     condition {
       test = "StringEquals"
       variable = "AWS:SourceArn"
-      values = [aws_cloudfront_distribution.cloudfront_app_bucket_distribution.arn]
+      values = [aws_cloudfront_distribution.app_distribution.arn]
     }
   }
 }
@@ -41,6 +41,6 @@ data "aws_iam_policy_document" "github_actions_user_s3_policy_document" {
 
   statement {
     actions   = ["cloudfront:CreateInvalidation"]
-    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.cloudfront_app_bucket_distribution.id}"]
+    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.app_distribution.id}"]
   }
 }
