@@ -48,7 +48,9 @@ data "aws_iam_policy_document" "github_actions_user_s3_policy_document" {
 # used to output Auth0 tenant domain in outputs.tf
 data "auth0_tenant" "current" {}
 
-# used to retrieve Auth0 credentials from AWS Secrets Manager
+# used to retrieve Auth0 credentials from AWS Secrets Manager, this was manually added to AWS via the Management Console
+# see documenation about Auth0 Terraform provider here: 
+# https://registry.terraform.io/providers/auth0/auth0/latest/docs/guides/quickstart#create-a-machine-to-machine-application
 data "aws_secretsmanager_secret" "auth0_keys" {
   name = "auth0_terraform_provider_credentials"
 }
