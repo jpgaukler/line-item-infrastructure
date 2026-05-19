@@ -1,9 +1,9 @@
-output "app_region" {
+output "s3_bucket_region" {
   value = aws_s3_bucket.app_bucket.region
   description = "Region of the S3 bucket for the applications frontend files"
 }
 
-output "app_bucket_name" {
+output "s3_bucket_name" {
   value = aws_s3_bucket.app_bucket.id
   description = "Name of the S3 bucket for the applications frontend files"
 }
