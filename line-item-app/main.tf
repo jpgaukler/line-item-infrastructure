@@ -189,3 +189,24 @@ resource "aws_iam_user_policy_attachment" "github_actions_user_s3_policy_attachm
 resource "aws_iam_access_key" "github_actions_user_access_key" {
   user = aws_iam_user.github_actions_user.name
 }
+
+
+
+# ============================================= Auth0 Application =============================================
+resource "auth0_client" "app_client" {
+  name        = local.app_name
+  description = "Managed by Terraform"
+  app_type    = "spa"
+  
+  # URLs required for authentication flow
+  callbacks           = ["http://localhost:4200/callback"]
+  allowed_logout_urls = ["http://localhost:4200"]
+  allowed_origins     = ["http://localhost:4200"]
+  web_origins         = ["http://localhost:4200"]
+
+  oidc_conformant = true
+
+  jwt_configuration {
+    alg = "RS256"
+  }
+}
