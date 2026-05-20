@@ -194,19 +194,65 @@ resource "aws_iam_access_key" "github_actions_user_access_key" {
 
 # ============================================= Auth0 Application =============================================
 resource "auth0_client" "app_client" {
-  name        = local.app_name
-  description = "Managed by Terraform"
-  app_type    = "spa"
+  name            = local.app_name
+  logo_uri        = local.app_logo_uri
+  description     = "Managed by Terraform"
+  app_type        = "spa"
+  oidc_conformant = true
+  grant_types     = [
+    "authorization_code",
+    "refresh_token"
+  ]
   
   # URLs required for authentication flow
-  callbacks           = ["http://localhost:4200/callback"]
+  callbacks           = ["http://localhost:4200"]
   allowed_logout_urls = ["http://localhost:4200"]
   allowed_origins     = ["http://localhost:4200"]
   web_origins         = ["http://localhost:4200"]
 
-  oidc_conformant = true
+  refresh_token {
+    leeway                       = 10
+    rotation_type                = "rotating"
+    expiration_type              = "expiring"
+    infinite_token_lifetime      = false
+    token_lifetime               = 2592000 # 30 days
+    infinite_idle_token_lifetime = false
+    idle_token_lifetime          = 1296000 # 15 days
+  }
 
   jwt_configuration {
     alg = "RS256"
   }
+}
+
+# Configure custom domain for Auth0
+resource "auth0_custom_domain" "app_domain" {
+  domain     = "login.${local.app_domain}"
+  type       = "auth0_managed_certs"
+  tls_policy = "recommended"
+}
+
+# Create the AWS Route 53 DNS Verification Record
+resource "aws_route53_record" "auth0_custom_domain" {
+  zone_id = aws_route53_zone.app_zone.zone_id
+  name    = auth0_custom_domain.app_domain.verification[0].methods[0].domain
+  type    = upper(auth0_custom_domain.app_domain.verification[0].methods[0].name)
+  records = [auth0_custom_domain.app_domain.verification[0].methods[0].record]
+  ttl     = 60
+}
+
+# Validate the custom domain on Auth0 side
+resource "auth0_custom_domain_verification" "app_domain_verification" {
+  depends_on = [aws_route53_record.auth0_custom_domain]
+  custom_domain_id = auth0_custom_domain.app_domain.id
+
+  timeouts {
+    create = "15m"
+  }
+}
+
+# enable custom domain in Auth0
+resource "auth0_custom_domain_default" "app_domain_default" {
+  depends_on = [auth0_custom_domain_verification.app_domain_verification]
+  domain = auth0_custom_domain.app_domain.domain
 }

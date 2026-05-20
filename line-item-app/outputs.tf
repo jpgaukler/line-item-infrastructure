@@ -35,6 +35,6 @@ output "auth0_client_id" {
 }
 
 output "auth0_domain" {
-  value       = data.auth0_tenant.current.domain
+  value       = auth0_custom_domain.app_domain.domain
   description = "The Auth0 tenant domain for this application"
 }
