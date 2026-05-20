@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "line-item-terraform-state"
+  bucket = locals.bucket_name
 
   tags = {
     Name = "terraform-state"

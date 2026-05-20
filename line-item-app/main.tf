@@ -205,10 +205,10 @@ resource "auth0_client" "app_client" {
   ]
   
   # URLs required for authentication flow
-  callbacks           = ["http://localhost:4200"]
-  allowed_logout_urls = ["http://localhost:4200"]
-  allowed_origins     = ["http://localhost:4200"]
-  web_origins         = ["http://localhost:4200"]
+  callbacks           = local.auth0_web_urls
+  allowed_logout_urls = local.auth0_web_urls
+  allowed_origins     = local.auth0_web_urls
+  web_origins         = local.auth0_web_urls
 
   refresh_token {
     leeway                       = 10
