@@ -52,7 +52,7 @@ data "auth0_tenant" "current" {}
 # see documenation about Auth0 Terraform provider here: 
 # https://registry.terraform.io/providers/auth0/auth0/latest/docs/guides/quickstart#create-a-machine-to-machine-application
 data "aws_secretsmanager_secret" "auth0_keys" {
-  name = "auth0_terraform_provider_credentials"
+  name = local.auth0_secrets_key
 }
 
 data "aws_secretsmanager_secret_version" "auth0_keys_latest" {
