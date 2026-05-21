@@ -1,6 +1,6 @@
 # ============================================= S3 Bucket =============================================
 resource "aws_s3_bucket" "app_bucket" {
-  bucket = local.app_name
+  bucket = "${local.app_name}-${local.environment_stage}"
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "app_bucket_encryption" {
@@ -38,7 +38,7 @@ resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
 
 # OAC policy for the Cloudfront Distribution
 resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
-  name = "${local.app_name}-s3-oac-policy"
+  name = "${local.app_name}-${local.environment_stage}-s3-oac-policy"
   origin_access_control_origin_type = "s3"
   signing_behavior = "always"
   signing_protocol = "sigv4"
@@ -46,7 +46,7 @@ resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
 
 # Cloudfront Distribution
 resource "aws_cloudfront_distribution" "app_distribution" {
-  comment = "${local.app_name}_bucket_distribution"
+  comment = "${local.app_name}-${local.environment_stage}-bucket-distribution"
 
   origin {
     domain_name = aws_s3_bucket.app_bucket.bucket_regional_domain_name
@@ -79,7 +79,7 @@ resource "aws_cloudfront_distribution" "app_distribution" {
   }
 
   viewer_certificate { 
-    acm_certificate_arn      = data.terraform_remote_state.global.outputs.acm_certificate_arn  // SSL certificate for custom domain created above
+    acm_certificate_arn      = data.terraform_remote_state.global.outputs.acm_certificate_arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
@@ -146,7 +146,7 @@ resource "aws_iam_access_key" "github_actions_user_access_key" {
 
 # ============================================= Auth0 Application =============================================
 resource "auth0_client" "app_client" {
-  name            = local.app_name
+  name            = "${local.app_name}-${local.environment_stage}"
   logo_uri        = local.app_logo_uri
   description     = "Managed by Terraform"
   app_type        = "spa"
