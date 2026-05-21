@@ -14,9 +14,9 @@ terraform {
   required_version = ">= 1.14"
 
   backend "s3" {
+    region       = "us-east-2"
     bucket       = "line-item-terraform-state"
     key          = "line-item-app/terraform.tfstate"
-    region       = "us-east-2"
     encrypt      = true
     use_lockfile = true
   }

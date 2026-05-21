@@ -1,3 +1,14 @@
+# retrive data for route52 zone
+data "terraform_remote_state" "global" {
+  backend = "s3"
+
+  config = {
+    bucket  = "line-item-terraform-state"
+    key     = "global/terraform.tfstate"
+    region  = "us-east-2"
+  }
+}
+
 # used to retrieve the current AWS AccountID
 data "aws_caller_identity" "current" {}
 

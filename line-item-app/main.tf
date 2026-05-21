@@ -39,47 +39,6 @@ resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
 
 # ============================================= Cloundfront distribution =============================================
 # (see example in docs here: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution#s3-origin)
-# Route 53 DNS zone for applying custom domain
-# MANUAL STEP REQUIRED: after this is created, must update the nameservers in GoDaddy to the 4 name servers of the Route 53 zone
-resource "aws_route53_zone" "app_zone" {
-  name = local.app_domain
-}
-
-# SSL cert for custom domain
-resource "aws_acm_certificate" "app_cert" {
-  provider          = aws.us_east_1
-  domain_name       = local.app_domain
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# Add records in Route 53 to validate the certificate
-resource "aws_route53_record" "app_cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.app_cert.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  }
-
-  zone_id         = aws_route53_zone.app_zone.zone_id
-  name            = each.value.name
-  type            = each.value.type
-  records         = [each.value.record]
-  ttl             = 60
-  allow_overwrite = true
-}
-
-# This resource triggers the actual validation process and waits for it to complete
-resource "aws_acm_certificate_validation" "app_cert_validation_waiter" {
-  provider                = aws.us_east_1
-  certificate_arn         = aws_acm_certificate.app_cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.app_cert_validation : record.fqdn]
-}
 
 # OAC policy for the Cloudfront Distribution
 resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
@@ -124,13 +83,10 @@ resource "aws_cloudfront_distribution" "app_distribution" {
   }
 
   viewer_certificate { 
-    acm_certificate_arn      = aws_acm_certificate.app_cert.arn // SSL certificate for custom domain created above
+    acm_certificate_arn      = data.terraform_remote_state.global.outputs.acm_certificate_arn  // SSL certificate for custom domain created above
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
-
-  # This ensures the cert is fully issued BEFORE Terraform tries to use the SSL cert, otherwise 'apply' would fail
-  depends_on = [aws_acm_certificate_validation.app_cert_validation_waiter]
 }
 
 # Function to rewrite all requests to index.html file
@@ -158,7 +114,7 @@ resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
 # DNS records to point to the CloudFront distribution
 resource "aws_route53_record" "app_record" {
   for_each = aws_cloudfront_distribution.app_distribution.aliases
-  zone_id  = aws_route53_zone.app_zone.zone_id
+  zone_id  = data.terraform_remote_state.global.outputs.route53_zone_id
   name     = each.value
   type     = "A"
 
@@ -234,7 +190,7 @@ resource "auth0_custom_domain" "app_domain" {
 
 # Create the AWS Route 53 DNS Verification Record
 resource "aws_route53_record" "auth0_custom_domain" {
-  zone_id = aws_route53_zone.app_zone.zone_id
+  zone_id = data.terraform_remote_state.global.outputs.route53_zone_id
   name    = auth0_custom_domain.app_domain.verification[0].methods[0].domain
   type    = upper(auth0_custom_domain.app_domain.verification[0].methods[0].name)
   records = [auth0_custom_domain.app_domain.verification[0].methods[0].record]
