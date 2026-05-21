@@ -34,9 +34,21 @@ resource "aws_route53_record" "app_cert_validation" {
   allow_overwrite = true
 }
 
-# This resource triggers the actual validation process and waits for it to complete
 resource "aws_acm_certificate_validation" "app_cert_validation_waiter" {
   provider                = aws
   certificate_arn         = aws_acm_certificate.app_cert.arn
   validation_record_fqdns = [for record in aws_route53_record.app_cert_validation : record.fqdn]
 }
+
+
+# ============================================= IAM User for Github Actions =============================================
+resource "aws_iam_user" "github_actions_user" {
+  name          = "github-actions-user"
+  path          = "/"
+  force_destroy = true # Allows destroying user even if they have non-Terraform managed keys
+}
+
+resource "aws_iam_access_key" "github_actions_user_access_key" {
+  user = aws_iam_user.github_actions_user.name
+}
+

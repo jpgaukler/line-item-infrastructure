@@ -122,26 +122,15 @@ resource "aws_route53_record" "app_record" {
 }
 
 # ============================================= IAM User for CI/CD =============================================
-resource "aws_iam_user" "github_actions_user" {
-  name          = "github-actions-user"
-  path          = "/"
-  force_destroy = true # Allows destroying user even if they have non-Terraform managed keys
-}
-
 resource "aws_iam_policy" "github_actions_user_s3_policy" {
   name   = "github-actions-s3-deploy-policy"
   policy = data.aws_iam_policy_document.github_actions_user_s3_policy_document.json
 }
 
 resource "aws_iam_user_policy_attachment" "github_actions_user_s3_policy_attachment" {
-  user       = aws_iam_user.github_actions_user.name
+  user       = data.terraform_remote_state.global.outputs.github_actions_user_name
   policy_arn = aws_iam_policy.github_actions_user_s3_policy.arn
 }
-
-resource "aws_iam_access_key" "github_actions_user_access_key" {
-  user = aws_iam_user.github_actions_user.name
-}
-
 
 
 # ============================================= Auth0 Application =============================================
