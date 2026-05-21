@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = locals.bucket_name
+  bucket = local.bucket_name
 
   tags = {
     Name = "terraform-state"
@@ -21,6 +21,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_e
 
   rule {
     bucket_key_enabled = true
+    blocked_encryption_types = [ "SSE-C" ]
 
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
