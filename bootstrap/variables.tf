@@ -1,4 +1,2 @@
-locals {
-    bucket_name = "line-item-terraform-state"
-    region = "us-east-2"
-}
+variable "aws_region" { type = string }
+variable "bucket_name" { type = string }
