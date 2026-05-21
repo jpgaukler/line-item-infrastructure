@@ -8,6 +8,7 @@ resource "aws_route53_zone" "app_zone" {
 resource "aws_acm_certificate" "app_cert" {
   provider          = aws
   domain_name       = local.app_domain
+  subject_alternative_names = ["*.${local.app_domain}"] // wildcard support
   validation_method = "DNS"
 
   lifecycle {
