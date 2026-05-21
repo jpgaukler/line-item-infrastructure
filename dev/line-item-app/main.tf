@@ -1,10 +1,6 @@
 # ============================================= S3 Bucket =============================================
 resource "aws_s3_bucket" "app_bucket" {
   bucket = local.app_name
-
-  tags = {
-    Name = local.app_name
-  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "app_bucket_encryption" {
