@@ -1,3 +1,90 @@
+# ============================================= AWS ECS Express =============================================
+
+# Create the ECS Execution IAM Role
+resource "aws_iam_role" "ecs_execution_role" {
+  name               = "ecs-execution-role-${local.api_name}-${local.environment_stage}"
+  assume_role_policy = data.aws_iam_policy_document.ecs_execution_trust_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Create the ECS Infrastructure IAM Role
+resource "aws_iam_role" "ecs_infrastructure_role" {
+  name               = "ecs-infrastructure-role-${local.api_name}-${local.environment_stage}"
+  assume_role_policy = data.aws_iam_policy_document.ecs_infrastructure_trust_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_infrastructure" {
+  role       = aws_iam_role.ecs_infrastructure_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
+}
+
+# Create the Private ECR repository to store container images
+resource "aws_ecr_repository" "api_repo" {
+  name                 = "aws-ecr-${local.api_name}-${local.environment_stage}"
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION" 
+
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest*"
+    filter_type = "WILDCARD"
+  }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# Create CloudWatch Log Group for Container logs
+resource "aws_cloudwatch_log_group" "api_log_group" {
+  name              = "/ecs/${local.api_name}/${local.environment_stage}"
+  retention_in_days = 7  
+}
+
+# 3. The Express Mode Service (Automates the deployment)
+resource "aws_ecs_express_gateway_service" "api_ecs_service" {
+  execution_role_arn      = aws_iam_role.ecs_execution_role.arn
+  infrastructure_role_arn = aws_iam_role.ecs_infrastructure_role.arn
+  health_check_path       = "/health"
+
+  primary_container {
+    image          = "${aws_ecr_repository.api_repo.repository_url}:latest"
+    container_port = 8080
+    command        = ["./start.sh"]
+
+    aws_logs_configuration {
+      log_group = aws_cloudwatch_log_group.api_log_group.name
+      log_stream_prefix = "${local.api_name}-${local.environment_stage}"
+    }
+
+    # environment {
+    #   name  = "ENV"
+    #   value = "development"
+    # }
+
+    # environment {
+    #   name  = "PORT"
+    #   value = "8080"
+    # }
+
+    # secret {
+    #   name       = "DB_PASSWORD"
+    #   value_from = aws_secretsmanager_secret.db_password.arn
+    # }
+  }
+
+  # Prevent race conditions 
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_execution,
+    aws_iam_role_policy_attachment.ecs_infrastructure
+  ]
+}
+
+
+
+
 # ============================================= Auth0 API =============================================
 resource "auth0_resource_server" "api" {
   name        = "${local.api_name}-${local.environment_stage}"

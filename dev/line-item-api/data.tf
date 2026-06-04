@@ -8,6 +8,32 @@ data "terraform_remote_state" "line_item_app" {
   }
 }
 
+# policy for ECS task execution role, allowing it to pull container images from ECR and write logs to CloudWatch
+data "aws_iam_policy_document" "ecs_execution_trust_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+# policy for ECS infrastructure role, allowing it to create and manage load balancers on your behalf
+data "aws_iam_policy_document" "ecs_infrastructure_trust_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs.amazonaws.com"]
+    }
+  }
+}
+
 # used to output Auth0 tenant domain in outputs.tf
 data "auth0_tenant" "current" {}
 
