@@ -48,6 +48,8 @@ resource "aws_ecs_express_gateway_service" "api_ecs_service" {
   execution_role_arn      = aws_iam_role.ecs_execution_role.arn
   infrastructure_role_arn = aws_iam_role.ecs_infrastructure_role.arn
   health_check_path       = "/health"
+  cpu                     = local.ecs_container_cpu
+  memory                  = local.ecs_container_memory
 
   primary_container {
     image          = "${aws_ecr_repository.api_repo.repository_url}:latest"
@@ -58,15 +60,10 @@ resource "aws_ecs_express_gateway_service" "api_ecs_service" {
       log_stream_prefix = "${local.api_name}-${local.environment_stage}"
     }
 
-    # environment {
-    #   name  = "ENV"
-    #   value = "development"
-    # }
-
-    # environment {
-    #   name  = "PORT"
-    #   value = "8080"
-    # }
+    environment {
+      name  = "ASPNETCORE_ENVIRONMENT"
+      value = "Development"
+    }
 
     # secret {
     #   name       = "DB_PASSWORD"
