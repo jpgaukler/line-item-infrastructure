@@ -18,9 +18,6 @@ data "terraform_remote_state" "global" {
   }
 }
 
-# used to retrieve the current AWS AccountID
-data "aws_caller_identity" "current" {}
-
 # policy for ECS task execution role, allowing it to pull container images from ECR and write logs to CloudWatch
 data "aws_iam_policy_document" "ecs_execution_trust_policy" {
   statement {
@@ -66,7 +63,7 @@ data "aws_iam_policy_document" "github_actions_user_ecr_policy_document" {
       "ecr:UploadLayerPart",
     ]
     effect    = "Allow"
-    resources = ["arn:aws:ecr::${data.aws_caller_identity.current.account_id}:repository/${aws_ecr_repository.api_repo.name}"]
+    resources = [aws_ecr_repository.api_repo.arn]
   }
 }
 

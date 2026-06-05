@@ -9,9 +9,6 @@ data "terraform_remote_state" "global" {
   }
 }
 
-# used to retrieve the current AWS AccountID
-data "aws_caller_identity" "current" {}
-
 # grant cloudfront permissions to see S3 bucket
 data "aws_iam_policy_document" "app_bucket_cloudfront_policy_document" {
   statement {
@@ -52,7 +49,7 @@ data "aws_iam_policy_document" "github_actions_user_s3_policy_document" {
 
   statement {
     actions   = ["cloudfront:CreateInvalidation"]
-    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${aws_cloudfront_distribution.app_distribution.id}"]
+    resources = [aws_cloudfront_distribution.app_distribution.arn]
   }
 }
 
