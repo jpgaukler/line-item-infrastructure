@@ -74,13 +74,14 @@ resource "aws_ecs_express_gateway_service" "api_ecs_service" {
     # }
   }
 
+  # NOT SURE IF I NEED THIS, AI TOLD ME TO DO IT BUT IT SEEMS TO HAVE NO EFFECT
   # ignore changes to the container image to prevent Terraform from flagging state changes, 
   # since the Github Actions workflow will be deploying new images with the same "latest" tag
-  lifecycle {
-    ignore_changes = [
-      primary_container[0].image
-    ]
-  }
+  # lifecycle {
+  #   ignore_changes = [
+  #     primary_container[0].image
+  #   ]
+  # }
 
   # Prevent race conditions 
   depends_on = [

@@ -65,6 +65,12 @@ data "aws_iam_policy_document" "github_actions_user_ecr_policy_document" {
     effect    = "Allow"
     resources = [aws_ecr_repository.api_repo.arn]
   }
+
+  statement {
+    actions = ["ecs:UpdateService"]
+    effect    = "Allow"
+    resources = [aws_ecs_express_gateway_service.api_ecs_service.service_arn]
+  }
 }
 
 # used to output Auth0 tenant domain in outputs.tf
