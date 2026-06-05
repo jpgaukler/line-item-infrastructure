@@ -52,7 +52,6 @@ resource "aws_ecs_express_gateway_service" "api_ecs_service" {
   primary_container {
     image          = "${aws_ecr_repository.api_repo.repository_url}:latest"
     container_port = 8080
-    command        = ["./start.sh"]
 
     aws_logs_configuration {
       log_group = aws_cloudwatch_log_group.api_log_group.name
@@ -75,12 +74,34 @@ resource "aws_ecs_express_gateway_service" "api_ecs_service" {
     # }
   }
 
+  # ignore changes to the container image to prevent Terraform from flagging state changes, 
+  # since the Github Actions workflow will be deploying new images with the same "latest" tag
+  lifecycle {
+    ignore_changes = [
+      primary_container[0].image
+    ]
+  }
+
   # Prevent race conditions 
   depends_on = [
     aws_iam_role_policy_attachment.ecs_execution,
     aws_iam_role_policy_attachment.ecs_infrastructure
   ]
 }
+
+
+
+# ============================================= IAM User for CI/CD =============================================
+resource "aws_iam_policy" "github_actions_user_ecr_policy" {
+  name   = "github-actions-ecr-policy-${local.api_name}-${local.environment_stage}"
+  policy = data.aws_iam_policy_document.github_actions_user_ecr_policy_document.json
+}
+
+resource "aws_iam_user_policy_attachment" "github_actions_user_ecr_policy_attachment" {
+  user       = data.terraform_remote_state.global.outputs.github_actions_user_name
+  policy_arn = aws_iam_policy.github_actions_user_ecr_policy.arn
+}
+
 
 
 

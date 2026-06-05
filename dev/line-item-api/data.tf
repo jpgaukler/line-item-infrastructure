@@ -8,6 +8,19 @@ data "terraform_remote_state" "line_item_app" {
   }
 }
 
+data "terraform_remote_state" "global" {
+  backend = "s3"
+
+  config = {
+    bucket  = "line-item-terraform-state"
+    key     = "global/terraform.tfstate"
+    region  = "us-east-2"
+  }
+}
+
+# used to retrieve the current AWS AccountID
+data "aws_caller_identity" "current" {}
+
 # policy for ECS task execution role, allowing it to pull container images from ECR and write logs to CloudWatch
 data "aws_iam_policy_document" "ecs_execution_trust_policy" {
   statement {
@@ -31,6 +44,29 @@ data "aws_iam_policy_document" "ecs_infrastructure_trust_policy" {
       type        = "Service"
       identifiers = ["ecs.amazonaws.com"]
     }
+  }
+}
+
+# grant IAM user permissions for Github actions workflow
+data "aws_iam_policy_document" "github_actions_user_ecr_policy_document" {
+  statement {
+    actions   = ["ecr:GetAuthorizationToken"]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "ecr:BatchGetImage",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:CompleteLayerUpload",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+    ]
+    effect    = "Allow"
+    resources = ["arn:aws:ecr::${data.aws_caller_identity.current.account_id}:repository/${aws_ecr_repository.api_repo.name}"]
   }
 }
 

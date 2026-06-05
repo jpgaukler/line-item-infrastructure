@@ -18,3 +18,8 @@ output "aws_ecs_express_api_url" {
   description = "The public HTTPS URL for the API"
 }
 
+output "aws_ecs_express_service_name" {
+  value       = aws_ecs_express_gateway_service.api_ecs_service.service_name
+  description = "The name of the ECS service"
+}
+
