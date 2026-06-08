@@ -19,7 +19,6 @@ module "angular_app" {
   }
 }
 
-
 module "auth0_app_client" {
   source = "../../../modules/auth0-app-client"
 
