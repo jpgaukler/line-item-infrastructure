@@ -13,13 +13,12 @@ output "aws_ecr_repository_url" {
   description = "The target URL used pushing container images"
 }
 
-output "aws_ecs_express_api_url" {
-  value       = aws_ecs_express_gateway_service.api_ecs_service.ingress_paths[0].endpoint
-  description = "The public HTTPS URL for the API"
-}
-
 output "aws_ecs_express_service_name" {
-  value       = aws_ecs_express_gateway_service.api_ecs_service.service_name
+  value       = module.line_item_api_ecs_express_container_app.ecs_express_service_name
   description = "The name of the ECS service"
 }
 
+output "aws_ecs_express_api_url" {
+  value       = module.line_item_api_ecs_express_container_app.ecs_express_service_url
+  description = "The public HTTPS URL for the API"
+}

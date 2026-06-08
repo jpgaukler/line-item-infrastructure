@@ -1,31 +1,7 @@
-# ============================================= AWS ECS Express =============================================
-
-# Create the ECS Execution IAM Role
-resource "aws_iam_role" "ecs_execution_role" {
-  name               = "ecs-execution-role-${local.api_name}-${local.environment_stage}"
-  assume_role_policy = data.aws_iam_policy_document.ecs_execution_trust_policy.json
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_execution" {
-  role       = aws_iam_role.ecs_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# Create the ECS Infrastructure IAM Role
-resource "aws_iam_role" "ecs_infrastructure_role" {
-  name               = "ecs-infrastructure-role-${local.api_name}-${local.environment_stage}"
-  assume_role_policy = data.aws_iam_policy_document.ecs_infrastructure_trust_policy.json
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_infrastructure" {
-  role       = aws_iam_role.ecs_infrastructure_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
-}
-
 # Create the Private ECR repository to store container images
 resource "aws_ecr_repository" "api_repo" {
   name                 = "aws-ecr-${local.api_name}-${local.environment_stage}"
-  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION" 
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
 
   image_tag_mutability_exclusion_filter {
     filter      = "latest*"
@@ -37,69 +13,32 @@ resource "aws_ecr_repository" "api_repo" {
   }
 }
 
-# Create CloudWatch Log Group for Container logs
-resource "aws_cloudwatch_log_group" "api_log_group" {
-  name              = "/ecs/${local.api_name}/${local.environment_stage}"
-  retention_in_days = 7  
-}
+module "line_item_api_ecs_express_container_app" {
+  source = "../../../modules/ecs-express-container-app"
 
-# 3. The Express Mode Service (Automates the deployment)
-resource "aws_ecs_express_gateway_service" "api_ecs_service" {
-  execution_role_arn      = aws_iam_role.ecs_execution_role.arn
-  infrastructure_role_arn = aws_iam_role.ecs_infrastructure_role.arn
-  health_check_path       = "/health"
-  cpu                     = local.ecs_container_cpu
-  memory                  = local.ecs_container_memory
+  environment_stage        = local.environment_stage
+  app_name                 = local.api_name
+  
+  ecr_repository_arn = aws_ecr_repository.api_repo.arn
+  ecr_repository_url = aws_ecr_repository.api_repo.repository_url
 
-  primary_container {
-    image          = "${aws_ecr_repository.api_repo.repository_url}:latest"
-    container_port = 8080
-
-    aws_logs_configuration {
-      log_group = aws_cloudwatch_log_group.api_log_group.name
-      log_stream_prefix = "${local.api_name}-${local.environment_stage}"
-    }
-
-    environment {
-      name  = "ASPNETCORE_ENVIRONMENT"
-      value = "Development"
-    }
-
-    # secret {
-    #   name       = "DB_PASSWORD"
-    #   value_from = aws_secretsmanager_secret.db_password.arn
-    # }
+  container_health_check_path = "/health"
+  container_cpu    = local.ecs_container_cpu
+  container_memory = local.ecs_container_memory
+  container_port   = 8080
+  container_image_tag = "latest"
+  container_environment_variables = {
+    ASPNETCORE_ENVIRONMENT = "Development"
   }
 
-  # NOT SURE IF I NEED THIS, AI TOLD ME TO DO IT BUT IT SEEMS TO HAVE NO EFFECT
-  # ignore changes to the container image to prevent Terraform from flagging state changes, 
-  # since the Github Actions workflow will be deploying new images with the same "latest" tag
-  # lifecycle {
-  #   ignore_changes = [
-  #     primary_container[0].image
-  #   ]
-  # }
+  github_actions_user_name = data.terraform_remote_state.global.outputs.github_actions_user_name
 
-  # Prevent race conditions 
-  depends_on = [
-    aws_iam_role_policy_attachment.ecs_execution,
-    aws_iam_role_policy_attachment.ecs_infrastructure
-  ]
+  tags = {
+    Application = local.api_name
+    Environment = local.environment_stage
+    ManagedBy   = "Terraform"
+  }
 }
-
-
-
-# ============================================= IAM User for CI/CD =============================================
-resource "aws_iam_policy" "github_actions_user_ecr_policy" {
-  name   = "github-actions-ecr-policy-${local.api_name}-${local.environment_stage}"
-  policy = data.aws_iam_policy_document.github_actions_user_ecr_policy_document.json
-}
-
-resource "aws_iam_user_policy_attachment" "github_actions_user_ecr_policy_attachment" {
-  user       = data.terraform_remote_state.global.outputs.github_actions_user_name
-  policy_arn = aws_iam_policy.github_actions_user_ecr_policy.arn
-}
-
 
 
 
