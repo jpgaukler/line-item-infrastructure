@@ -11,9 +11,9 @@ output "cloudfront_distribution_id" {
 }
 
 output "auth0_client_id" {
-  value = auth0_client.app_client.client_id
+  value       = module.auth0_app_client.auth0_client_id
 }
 
-output "auth0_domain" {
-  value = auth0_custom_domain.app_domain.domain
+output "auth0_custom_domain" {
+  value       = module.auth0_app_client.auth0_custom_domain
 }
