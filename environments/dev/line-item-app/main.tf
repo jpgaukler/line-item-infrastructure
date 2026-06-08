@@ -1,4 +1,4 @@
-module "line_item_angular_spa" {
+module "angular_app" {
   source = "../../../modules/angular-spa"
 
   environment_stage = local.environment_stage

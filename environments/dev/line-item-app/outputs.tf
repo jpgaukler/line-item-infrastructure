@@ -1,19 +1,19 @@
 output "s3_bucket_region" {
-  value = module.line_item_angular_spa.bucket_region
+  value = module.angular_app.bucket_region
 }
 
 output "s3_bucket_name" {
-  value = module.line_item_angular_spa.bucket_name
+  value = module.angular_app.bucket_name
 }
-// used in Github Actions to trigger cache invalidation after deployment
+
 output "cloudfront_distribution_id" {
-  value = module.line_item_angular_spa.cloudfront_distribution_id
+  value = module.angular_app.cloudfront_distribution_id
 }
 
 output "auth0_client_id" {
-  value       = module.auth0_app_client.auth0_client_id
+  value = module.auth0_app_client.auth0_client_id
 }
 
 output "auth0_custom_domain" {
-  value       = module.auth0_app_client.auth0_custom_domain
+  value = module.auth0_app_client.auth0_custom_domain
 }
