@@ -4,7 +4,7 @@ output "auth0_tenant_domain" {
 }
 
 output "auth0_api_audience" {
-  value = auth0_resource_server.api.identifier
+  value       = module.auth0_api.auth0_api_identifier
   description = "The unique identifier for the API, used as the 'audience' in Auth0 authentication flows"
 }
 
