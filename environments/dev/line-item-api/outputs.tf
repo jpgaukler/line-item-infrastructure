@@ -14,11 +14,11 @@ output "aws_ecr_repository_url" {
 }
 
 output "aws_ecs_express_service_name" {
-  value       = module.line_item_api_ecs_express_container_app.ecs_express_service_name
+  value       = module.line_item_container_app.ecs_express_service_name
   description = "The name of the ECS service"
 }
 
 output "aws_ecs_express_api_url" {
-  value       = module.line_item_api_ecs_express_container_app.ecs_express_service_url
+  value       = module.line_item_container_app.ecs_express_service_url
   description = "The public HTTPS URL for the API"
 }

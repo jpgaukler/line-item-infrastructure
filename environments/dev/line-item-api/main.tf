@@ -13,7 +13,7 @@ resource "aws_ecr_repository" "api_repo" {
   }
 }
 
-module "line_item_api_ecs_express_container_app" {
+module "line_item_container_app" {
   source = "../../../modules/ecs-express-container-app"
 
   environment_stage        = local.environment_stage
