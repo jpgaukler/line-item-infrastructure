@@ -8,7 +8,7 @@ module "angular_app" {
   cloudfront_geo_restriction_locations = ["US"]
 
   route53_zone_id      = data.terraform_remote_state.global.outputs.route53_zone_id
-  acm_certificate_arn  = data.terraform_remote_state.global.outputs.acm_certificate_arn
+  acm_certificate_arn  = data.terraform_remote_state.global.outputs.acm_certificate_us_east_1_arn
   
   github_actions_user_name = data.terraform_remote_state.global.outputs.github_actions_user_name
 
