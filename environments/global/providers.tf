@@ -17,7 +17,12 @@ terraform {
   }
 }
 
-# Provider must be us-east-1 for AWS Certificate Manager
+provider "aws" {
+  region  = "us-east-2"
+}
+
+# Provider must be us-east-1 for AWS Certificate Manager certificates used by CloudFront
 provider "aws" {
   region = "us-east-1"
+  alias  = "us_east_1"
 }

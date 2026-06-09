@@ -1,32 +1,17 @@
-# Create the Private ECR repository to store container images
-resource "aws_ecr_repository" "api_repo" {
-  name                 = "aws-ecr-${local.api_name}-${local.environment_stage}"
-  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
-
-  image_tag_mutability_exclusion_filter {
-    filter      = "latest*"
-    filter_type = "WILDCARD"
-  }
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
 module "line_item_container_app" {
   source = "../../../modules/ecs-express-container-app"
 
   environment_stage        = local.environment_stage
   app_name                 = local.api_name
   
-  ecr_repository_arn = aws_ecr_repository.api_repo.arn
-  ecr_repository_url = aws_ecr_repository.api_repo.repository_url
+  ecr_repository_arn = data.terraform_remote_state.global.outputs.ecr_repository_arn
+  ecr_repository_url = data.terraform_remote_state.global.outputs.ecr_repository_url
 
-  container_health_check_path = "/health"
-  container_cpu    = local.ecs_container_cpu
-  container_memory = local.ecs_container_memory
-  container_port   = 8080
-  container_image_tag = "latest"
+  container_health_check_path     = "/health"
+  container_cpu                   = local.ecs_container_cpu
+  container_memory                = local.ecs_container_memory
+  container_port                  = 8080
+  container_image_tag             = "latest"
   container_environment_variables = {
     ASPNETCORE_ENVIRONMENT = "Development"
   }

@@ -23,3 +23,10 @@ output "github_actions_user_secret_access_key" {
   sensitive = true
 }
 
+output "ecr_repository_arn" {
+  value = aws_ecr_repository.api_repo.arn
+}
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.api_repo.repository_url
+}

@@ -8,11 +8,6 @@ output "auth0_api_audience" {
   description = "The unique identifier for the API, used as the 'audience' in Auth0 authentication flows"
 }
 
-output "aws_ecr_repository_url" {
-  value       = aws_ecr_repository.api_repo.repository_url
-  description = "The target URL used pushing container images"
-}
-
 output "aws_ecs_express_service_name" {
   value       = module.line_item_container_app.ecs_express_service_name
   description = "The name of the ECS service"

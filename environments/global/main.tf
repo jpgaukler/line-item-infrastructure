@@ -6,7 +6,7 @@ resource "aws_route53_zone" "app_zone" {
 
 # SSL cert for custom domain
 resource "aws_acm_certificate" "app_cert" {
-  provider          = aws
+  provider          = aws.us_east_1
   domain_name       = local.app_domain
   subject_alternative_names = ["*.${local.app_domain}"] // wildcard support
   validation_method = "DNS"
@@ -35,7 +35,7 @@ resource "aws_route53_record" "app_cert_validation" {
 }
 
 resource "aws_acm_certificate_validation" "app_cert_validation_waiter" {
-  provider                = aws
+  provider                = aws.us_east_1
   certificate_arn         = aws_acm_certificate.app_cert.arn
   validation_record_fqdns = [for record in aws_route53_record.app_cert_validation : record.fqdn]
 }
@@ -50,5 +50,23 @@ resource "aws_iam_user" "github_actions_user" {
 
 resource "aws_iam_access_key" "github_actions_user_access_key" {
   user = aws_iam_user.github_actions_user.name
+}
+
+
+
+
+# ============================================= ECR Container Registry =============================================
+resource "aws_ecr_repository" "api_repo" {
+  name                 = "line-item/line-item-api"
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
+
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest*"
+    filter_type = "WILDCARD"
+  }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
 }
 
