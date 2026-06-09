@@ -1,38 +1,10 @@
-module "line_item_container_app" {
-  source = "../../../modules/ecs-express-container-app"
-
-  environment_stage        = local.environment_stage
-  app_name                 = local.api_name
-  
-  ecr_repository_arn = data.terraform_remote_state.global.outputs.ecr_repository_arn
-  ecr_repository_url = data.terraform_remote_state.global.outputs.ecr_repository_url
-
-  container_health_check_path     = "/health"
-  container_cpu                   = local.ecs_container_cpu
-  container_memory                = local.ecs_container_memory
-  container_port                  = 8080
-  container_image_tag             = "latest"
-  container_environment_variables = {
-    ASPNETCORE_ENVIRONMENT = "Development"
-  }
-
-  github_actions_user_name = data.terraform_remote_state.global.outputs.github_actions_user_name
-
-  tags = {
-    Application = local.api_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
-}
-
-
 
 module "auth0_api" {
   source = "../../../modules/auth0-api"
 
   environment_stage           = local.environment_stage
   api_name                    = local.api_name
-  api_audience                = local.api_audience
+  api_audience                = local.auth0_api_audience
   custom_claims_namespace     = "https://line-item.app"
   
   client_grants = {

@@ -20,3 +20,5 @@ data "terraform_remote_state" "global" {
 
 data "auth0_tenant" "current" {}
 
+data "aws_region" "current" {}
+
