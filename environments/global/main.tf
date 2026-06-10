@@ -8,7 +8,10 @@ resource "aws_route53_zone" "app_zone" {
 resource "aws_acm_certificate" "app_cert_us_east_1" {
   provider          = aws.us_east_1
   domain_name       = local.app_domain
-  subject_alternative_names = ["*.${local.app_domain}"] // wildcard support
+  subject_alternative_names = [
+    "*.${local.app_domain}",
+    "*.api.${local.app_domain}"
+  ]
   validation_method = "DNS"
 
   lifecycle {
@@ -43,7 +46,10 @@ resource "aws_acm_certificate_validation" "app_cert_us_east_1_validation_waiter"
 # SSL cert in us-east-2 (ALB requires that cert is in same region as ALB)
 resource "aws_acm_certificate" "app_cert_us_east_2" {
   domain_name       = local.app_domain
-  subject_alternative_names = ["*.${local.app_domain}"] // wildcard support
+  subject_alternative_names = [
+    "*.${local.app_domain}",
+    "*.api.${local.app_domain}"
+  ]
   validation_method = "DNS"
 
   lifecycle {

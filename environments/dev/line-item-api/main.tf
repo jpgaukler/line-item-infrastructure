@@ -36,6 +36,13 @@ module "alb" {
   subnets = module.vpc.public_subnets
   
   enable_deletion_protection = false # allow deletion for dev
+  route53_records = {
+    A = {
+      zone_id = data.terraform_remote_state.global.outputs.route53_zone_id
+      name    = local.api_domain
+      type    = "A"
+    }
+  }
 
   # access_logs = {
   #   bucket = module.log_bucket.s3_bucket_id
@@ -226,8 +233,6 @@ module "ecs" {
     Environment = local.environment_stage
     ManagedBy   = "Terraform"
   }
-
-  depends_on = [module.alb]
 }
 
 
