@@ -53,6 +53,9 @@ module "alb" {
   #   prefix = "health-check-logs"
   # }
 
+  security_group_tags = { 
+    Name = "${local.name_prefix}-alb"
+  }
   security_group_ingress_rules = {
     all_http = {
       from_port   = 80
@@ -69,7 +72,6 @@ module "alb" {
       cidr_ipv4   = "0.0.0.0/0"
     }
   }
-  
   security_group_egress_rules = {
     all = {
       ip_protocol = "-1"
@@ -129,112 +131,105 @@ module "alb" {
   }
 }
 
-# module "ecs" {
-#   source  = "terraform-aws-modules/ecs/aws"
-#   version = "7.5.0"
-# 
-#   cluster_name = "${local.name_prefix}-ecs-cluster"
-# 
-#   services = {
-#     line_item_api = {
-#       name                   = "${local.name_prefix}-ecs-service"
-#       desired_count          = 1 # should set to 2 or more for production
-#       launch_type            = "FARGATE"
-#       
-#       subnet_ids             = module.vpc.private_subnets
-#       security_group_ingress_rules = {
-#         load_balancer_inbound = {
-#           description     = "Allow application traffic from ALB"
-#           from_port       = local.ecs_container_port
-#           to_port         = local.ecs_container_port
-#           protocol        = "tcp"
-#           security_groups = [aws_security_group.load_balancer.id]
-#         }
-#       }
-#       security_group_egress_rules = {
-#         all_outbound = {
-#           # ip_protocol = "-1"
-#           # cidr_ipv4   = "0.0.0.0/0"
-#           description = "Allow all outbound traffic"
-#           from_port   = 0
-#           to_port     = 0
-#           protocol    = "-1"
-#           cidr_blocks = ["0.0.0.0/0"]
-#         }
-#       }
-# 
-#       cpu    = local.ecs_container_cpu
-#       memory = local.ecs_container_memory
-#       enable_execute_command = true # allows exec into the container for debugging, should set to false for production
-# 
-#       deployment_minimum_healthy_percent = 100
-#       deployment_maximum_percent         = 200
-# 
-#       deployment_circuit_breaker = {
-#         enable   = true
-#         rollback = true
-#       }
-# 
-#       container_definitions = {
-#         api_container = {
-#           name      = local.api_name
-#           image     = "${data.terraform_remote_state.global.outputs.ecr_repository_url}:latest"
-#           essential = true
-# 
-#           port_mappings = [
-#             {
-#               name          = "http"
-#               containerPort = local.ecs_container_port
-#               hostPort      = local.ecs_container_port
-#               protocol      = "tcp"
-#             }
-#           ]
-# 
-#           environment = [
-#             {
-#               name  = "ASPNETCORE_ENVIRONMENT"
-#               value = "Development"
-#             }
-#           ]
-# 
-#           # secrets = {
-#           #   {
-#           #     name=
-#           #     valueFrom=
-#           #   }
-#           # }
-# 
-#           readonly_root_filesystem = true
-# 
-#           enable_cloudwatch_logging = true
-#           log_configuration = {
-#             logDriver = "awslogs"
-#             options = {
-#               awslogs-group         = "/ecs/${local.name_prefix}"
-#               awslogs-region        = data.aws_region.current
-#               awslogs-stream-prefix = local.api_name
-#             }
-#           }
-#         }
-#       }
-# 
-#       load_balancer = {
-#         service = {
-#           target_group_arn = "arn" #aws_lb_target_group.api.arn
-#           container_name   = local.api_name
-#           container_port   = local.ecs_container_port
-#         }
-#       }
-#     }
-#   }
-# 
-#   tags = {
-#     Application = local.api_name
-#     Environment = local.environment_stage
-#     ManagedBy   = "Terraform"
-#   }
-# }
-# 
+module "ecs" {
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "7.5.0"
+
+  cluster_name = "${local.name_prefix}-ecs-cluster"
+
+  services = {
+    line_item_api = {
+      name                   = "${local.name_prefix}-ecs-service"
+      desired_count          = 1 # should set to 2 or more for production
+      launch_type            = "FARGATE"
+      cpu                    = local.ecs_container_cpu
+      memory                 = local.ecs_container_memory
+
+      deployment_minimum_healthy_percent = 100
+      deployment_maximum_percent         = 200
+      deployment_circuit_breaker         = {
+        enable   = true
+        rollback = true
+      }
+
+      container_definitions = {
+        api_container = {
+          name      = local.api_name
+          image     = "${data.terraform_remote_state.global.outputs.ecr_repository_url}:latest"
+          essential = true
+          readonlyRootFilesystem = false
+
+
+          portMappings = [
+            {
+              name          = "http"
+              containerPort = local.ecs_container_port
+              hostPort      = local.ecs_container_port
+              protocol      = "tcp"
+            }
+          ]
+
+          environment = [
+            {
+              name  = "ASPNETCORE_ENVIRONMENT"
+              value = "Development"
+            }
+          ]
+
+          # secrets = {
+          #   {
+          #     name=
+          #     valueFrom=
+          #   }
+          # }
+
+          enable_cloudwatch_logging              = true
+          cloudwatch_log_group_name              = "/ecs/${local.name_prefix}"
+          cloudwatch_log_group_retention_in_days = 30
+        }
+      }
+
+      vpc_id                 = module.vpc.vpc_id
+      subnet_ids             = module.vpc.private_subnets
+      security_group_ingress_rules = {
+        load_balancer = {
+          description                  = "Allow inbound traffic from load balancer."
+          from_port                    = local.ecs_container_port
+          to_port                      = local.ecs_container_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.alb.security_group_id
+        }
+      }
+      security_group_egress_rules = {
+        all = {
+          description = "Allow all outbound traffic."
+          ip_protocol = "-1"
+          cidr_ipv4   = "0.0.0.0/0"
+        }
+      }
+
+      load_balancer = {
+        service = {
+          target_group_arn = module.alb.target_groups["ecs-tasks"].arn
+          container_name   = local.api_name
+          container_port   = local.ecs_container_port
+        }
+      }
+
+      task_exec_iam_role_use_name_prefix  = false
+      tasks_iam_role_max_session_duration = 3600
+    }
+  }
+
+  tags = {
+    Application = local.api_name
+    Environment = local.environment_stage
+    ManagedBy   = "Terraform"
+  }
+
+  depends_on = [module.alb]
+}
+
 
 module "auth0_api" {
   source = "../../../modules/auth0-api"
