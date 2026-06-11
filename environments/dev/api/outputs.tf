@@ -8,3 +8,7 @@ output "auth0_api_audience" {
   description = "The unique identifier for the API, used as the 'audience' in Auth0 authentication flows"
 }
 
+output "ecs_service_security_group_id" {
+  value       = module.ecs.services["line_item_api"].security_group_id
+  description = "Security group ID for the ECS API service"
+}

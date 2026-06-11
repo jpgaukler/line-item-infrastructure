@@ -13,9 +13,9 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnets
 }
 
-output "database_subnet_ids" {
-  description = "The IDs of the database subnets."
-  value       = module.vpc.database_subnets
+output "database_subnet_group_name" {
+  description = "The name of the database subnet group."
+  value       = module.vpc.database_subnet_group_name
 }
 
 output "vpc_cidr_block" {
