@@ -1,39 +1,10 @@
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-  version = "6.6.1"
-
-  name = "${local.name_prefix}-vpc"
-  cidr = "10.0.0.0/16"
-
-  azs              = ["us-east-2a", "us-east-2b", "us-east-2c"]
-  private_subnets  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  database_subnets = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
-  public_subnets   = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-  
-  create_database_subnet_group = true
-  create_database_subnet_route_table = true # isolate the database subnet completely so it has no route to the internet
-
-  enable_nat_gateway = true # Required for ECS Fargate tasks to reach the internet
-  single_nat_gateway = true # Cost-saving for dev. For production, prefer one NAT Gateway per AZ.
-
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Application = local.api_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
-}
-
-
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
 
   name    = "${local.name_prefix}-alb"
-  vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.public_subnets
+  vpc_id  = data.terraform_remote_state.network.outputs.vpc_id
+  subnets = data.terraform_remote_state.network.outputs.public_subnet_ids
   
   enable_deletion_protection = false # allow deletion for dev
   route53_records = {
@@ -82,7 +53,7 @@ module "alb" {
   security_group_egress_rules = {
     all = {
       ip_protocol = "-1"
-      cidr_ipv4   = module.vpc.vpc_cidr_block
+      cidr_ipv4   = data.terraform_remote_state.network.outputs.vpc_cidr_block
     }
   }
 
@@ -114,7 +85,7 @@ module "alb" {
   target_groups = {
     ecs-tasks = {
       protocol          = "HTTP" # Traffic FROM ALB to ECS can remain HTTP inside your private network
-      port              = local.ecs_container_port
+      port              = local.container_port
       target_type       = "ip"
       create_attachment = false
 
@@ -149,8 +120,8 @@ module "ecs" {
       name                   = "${local.name_prefix}-ecs-service"
       desired_count          = 1 # should set to 2 or more for production
       launch_type            = "FARGATE"
-      cpu                    = local.ecs_container_cpu
-      memory                 = local.ecs_container_memory
+      cpu                    = local.container_cpu
+      memory                 = local.container_memory
 
       deployment_minimum_healthy_percent = 100
       deployment_maximum_percent         = 200
@@ -170,8 +141,8 @@ module "ecs" {
           portMappings = [
             {
               name          = "http"
-              containerPort = local.ecs_container_port
-              hostPort      = local.ecs_container_port
+              containerPort = local.container_port
+              hostPort      = local.container_port
               protocol      = "tcp"
             }
           ]
@@ -196,13 +167,13 @@ module "ecs" {
         }
       }
 
-      vpc_id                 = module.vpc.vpc_id
-      subnet_ids             = module.vpc.private_subnets
+      vpc_id                 = data.terraform_remote_state.network.outputs.vpc_id
+      subnet_ids             = data.terraform_remote_state.network.outputs.private_subnet_ids
       security_group_ingress_rules = {
         load_balancer = {
           description                  = "Allow inbound traffic from load balancer."
-          from_port                    = local.ecs_container_port
-          to_port                      = local.ecs_container_port
+          from_port                    = local.container_port
+          to_port                      = local.container_port
           ip_protocol                  = "tcp"
           referenced_security_group_id = module.alb.security_group_id
         }
@@ -219,7 +190,7 @@ module "ecs" {
         service = {
           target_group_arn = module.alb.target_groups["ecs-tasks"].arn
           container_name   = local.api_name
-          container_port   = local.ecs_container_port
+          container_port   = local.container_port
         }
       }
 
@@ -234,7 +205,6 @@ module "ecs" {
     ManagedBy   = "Terraform"
   }
 }
-
 
 module "auth0_api" {
   source = "../../../modules/auth0-api"

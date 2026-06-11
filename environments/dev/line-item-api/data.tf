@@ -1,3 +1,13 @@
+data "terraform_remote_state" "network" {
+  backend = "s3"
+
+  config = {
+    bucket  = "line-item-terraform-state"
+    key     = "environments/dev/network/terraform.tfstate"
+    region  = "us-east-2"
+  }
+}
+
 data "terraform_remote_state" "line_item_app" {
   backend = "s3"
 
@@ -19,6 +29,3 @@ data "terraform_remote_state" "global" {
 }
 
 data "auth0_tenant" "current" {}
-
-data "aws_region" "current" {}
-
