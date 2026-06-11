@@ -8,12 +8,12 @@ data "terraform_remote_state" "network" {
   }
 }
 
-data "terraform_remote_state" "line_item_app" {
+data "terraform_remote_state" "app" {
   backend = "s3"
 
   config = {
     bucket  = "line-item-terraform-state"
-    key     = "environments/dev/line-item-app/terraform.tfstate"
+    key     = "environments/dev/app/terraform.tfstate"
     region  = "us-east-2"
   }
 }

@@ -216,7 +216,7 @@ module "auth0_api" {
   
   client_grants = {
     line_item_app = {
-      client_id        = data.terraform_remote_state.line_item_app.outputs.auth0_client_id
+      client_id        = data.terraform_remote_state.app.outputs.auth0_client_id
       subject_type     = "user"
       allow_all_scopes = true
     }
