@@ -154,12 +154,12 @@ module "ecs" {
             }
           ]
 
-          # secrets = {
-          #   {
-          #     name=
-          #     valueFrom=
-          #   }
-          # }
+          secrets = [
+            {
+              name      = "ConnectionStrings__Default"
+              valueFrom = aws_secretsmanager_secret.dotnet_connection_string_secret.arn
+            }
+          ]
 
           enable_cloudwatch_logging              = true
           cloudwatch_log_group_name              = "/ecs/${local.name_prefix}"
@@ -196,6 +196,16 @@ module "ecs" {
 
       task_exec_iam_role_use_name_prefix  = false
       tasks_iam_role_max_session_duration = 3600
+      task_exec_iam_statements = [
+        {
+          actions = [
+            "secretsmanager:GetSecretValue"
+          ]
+          resources = [
+            aws_secretsmanager_secret.dotnet_connection_string_secret.arn
+          ]
+        }
+      ]
     }
   }
 
@@ -204,6 +214,38 @@ module "ecs" {
     Environment = local.environment_stage
     ManagedBy   = "Terraform"
   }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ecs_to_database" {
+  security_group_id            = data.terraform_remote_state.database.outputs.db_security_group_id
+  referenced_security_group_id = module.ecs.services["line_item_api"].security_group_id
+
+  description = "Postgres traffic from ECS API"
+  from_port   = data.terraform_remote_state.database.outputs.db_instance_port
+  to_port     = data.terraform_remote_state.database.outputs.db_instance_port
+  ip_protocol = "tcp"
+}
+
+resource "aws_secretsmanager_secret" "dotnet_connection_string_secret" {
+  name        = "${local.name_prefix}-database-connection-string"
+  description = "Flat connection string for .NET API"
+  # tags        = local.tags
+}
+
+locals {
+  db_credentials = jsondecode(data.aws_secretsmanager_secret_version.db_credentials.secret_string)
+}
+
+resource "aws_secretsmanager_secret_version" "dotnet_connection_string_secret_version" {
+  secret_id = aws_secretsmanager_secret.dotnet_connection_string_secret.id
+
+  secret_string = join("", [
+    "Host=${data.terraform_remote_state.database.outputs.db_instance_address};",
+    "Port=${data.terraform_remote_state.database.outputs.db_instance_port};",
+    "Database=${data.terraform_remote_state.database.outputs.db_instance_name};",
+    "Username=${local.db_credentials.username};",
+    "Password=${local.db_credentials.password}"
+  ])
 }
 
 module "auth0_api" {

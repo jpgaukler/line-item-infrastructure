@@ -25,7 +25,7 @@ module "rds_postgres_database" {
   db_subnet_group_name = data.terraform_remote_state.network.outputs.database_subnet_group_name
   
   vpc_security_group_ids = [
-    module.database_security_group.id
+    aws_security_group.database.id
   ]
   
   publicly_accessible = false
@@ -41,23 +41,10 @@ module "rds_postgres_database" {
   tags = local.tags
 }
 
-module "database_security_group" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "6.0.0"
-
+resource "aws_security_group" "database" {
   name        = "${local.name_prefix}-postgres-sg"
-  description = "Allow Postgres database access from API"
+  description = "Allow Postgres database access"
   vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
-
-  ingress_rules = {
-    ecs = {
-      description                  = "Postgres traffic from ECS API only"
-      from_port                    = 5432
-      to_port                      = 5432
-      ip_protocol                  = "tcp"
-      referenced_security_group_id = data.terraform_remote_state.api.outputs.ecs_service_security_group_id
-    }
-  }
 
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-database-sg"
