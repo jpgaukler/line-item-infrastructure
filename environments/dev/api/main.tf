@@ -151,13 +151,29 @@ module "ecs" {
             {
               name  = "ASPNETCORE_ENVIRONMENT"
               value = "Development"
-            }
+            },
+            {
+              name  = "DatabaseOptions__Host"
+              value = data.terraform_remote_state.database.outputs.db_instance_address
+            },
+            {
+              name  = "DatabaseOptions__Port"
+              value = data.terraform_remote_state.database.outputs.db_instance_port
+            },
+            {
+              name  = "DatabaseOptions__Database"
+              value = data.terraform_remote_state.database.outputs.db_instance_name
+            },
           ]
 
           secrets = [
             {
-              name      = "ConnectionStrings__Default"
-              valueFrom = aws_secretsmanager_secret.dotnet_connection_string_secret.arn
+              name      = "DatabaseOptions__Username"
+              valueFrom = "${data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn}:username::"
+            },
+            {
+              name      = "DatabaseOptions__Password"
+              valueFrom = "${data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn}:password::"
             }
           ]
 
@@ -202,7 +218,7 @@ module "ecs" {
             "secretsmanager:GetSecretValue"
           ]
           resources = [
-            aws_secretsmanager_secret.dotnet_connection_string_secret.arn
+            data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn
           ]
         }
       ]
@@ -224,28 +240,6 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_to_database" {
   from_port   = data.terraform_remote_state.database.outputs.db_instance_port
   to_port     = data.terraform_remote_state.database.outputs.db_instance_port
   ip_protocol = "tcp"
-}
-
-resource "aws_secretsmanager_secret" "dotnet_connection_string_secret" {
-  name        = "${local.name_prefix}-database-connection-string"
-  description = "Flat connection string for .NET API"
-  # tags        = local.tags
-}
-
-locals {
-  db_credentials = jsondecode(data.aws_secretsmanager_secret_version.db_credentials.secret_string)
-}
-
-resource "aws_secretsmanager_secret_version" "dotnet_connection_string_secret_version" {
-  secret_id = aws_secretsmanager_secret.dotnet_connection_string_secret.id
-
-  secret_string = join("", [
-    "Host=${data.terraform_remote_state.database.outputs.db_instance_address};",
-    "Port=${data.terraform_remote_state.database.outputs.db_instance_port};",
-    "Database=${data.terraform_remote_state.database.outputs.db_instance_name};",
-    "Username=${local.db_credentials.username};",
-    "Password=${local.db_credentials.password}"
-  ])
 }
 
 module "auth0_api" {

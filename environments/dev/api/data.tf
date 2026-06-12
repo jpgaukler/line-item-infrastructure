@@ -38,8 +38,4 @@ data "terraform_remote_state" "database" {
   }
 }
 
-data "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn
-}
-
 data "auth0_tenant" "current" {}
