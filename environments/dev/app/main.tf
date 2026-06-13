@@ -1,8 +1,7 @@
 module "angular_app" {
   source = "../../../modules/angular-spa"
 
-  environment_stage = local.environment_stage
-  app_name          = local.app_name
+  name_prefix       = local.name_prefix
   app_domains       = local.app_domains
 
   cloudfront_geo_restriction_locations = ["US"]
@@ -12,11 +11,7 @@ module "angular_app" {
   
   github_actions_user_name = data.terraform_remote_state.global.outputs.github_actions_user_name
 
-  tags = {
-    Application = local.app_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
+  tags = local.tags
 }
 
 module "auth0_app_client" {

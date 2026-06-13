@@ -1,12 +1,8 @@
-locals {
-  name_prefix = "${var.app_name}-${var.environment_stage}"
-}
-
 # =============================================
 # S3 Bucket
 # =============================================
 resource "aws_s3_bucket" "app_bucket" {
-  bucket = "${local.name_prefix}-angular-spa"
+  bucket = "${var.name_prefix}-angular-spa"
   tags   = var.tags
 }
 
@@ -43,14 +39,14 @@ resource "aws_s3_bucket_policy" "app_bucket_cloudfront_policy" {
 # CloudFront Distribution
 # =============================================
 resource "aws_cloudfront_origin_access_control" "cloudfront_oac_policy" {
-  name                              = "${local.name_prefix}-s3-oac-policy"
+  name                              = "${var.name_prefix}-s3-oac-policy"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
 }
 
 resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
-  name    = "${local.name_prefix}-spa-rewrite"
+  name    = "${var.name_prefix}-spa-rewrite"
   runtime = "cloudfront-js-1.0"
   comment = "Rewrite all non-file paths to index.html for SPA routing"
   publish = true
@@ -68,10 +64,14 @@ resource "aws_cloudfront_function" "cloudfront_spa_rewrite" {
       return request;
   }
   EOF
+  
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_cloudfront_distribution" "app_distribution" {
-  comment             = "${local.name_prefix}-app-bucket-distribution"
+  comment             = "${var.name_prefix}-app-bucket-distribution"
   enabled             = true
   default_root_object = "index.html"
   price_class         = var.cloudfront_price_class
@@ -135,8 +135,10 @@ resource "aws_route53_record" "app_record" {
 # IAM User for Github Actions CI/CD
 # =============================================
 resource "aws_iam_policy" "github_actions_s3_policy" {
-  name   = "${local.name_prefix}-github-actions-s3-policy"
+  name   = "${var.name_prefix}-github-actions-s3-policy"
   policy = data.aws_iam_policy_document.app_bucket_github_actions_policy_document.json
+
+  tags = var.tags
 }
 
 resource "aws_iam_user_policy_attachment" "github_actions_s3_policy_attachment" {

@@ -85,7 +85,7 @@ module "alb" {
   target_groups = {
     ecs-tasks = {
       protocol          = "HTTP" # Traffic FROM ALB to ECS can remain HTTP inside your private network
-      port              = local.container_port
+      port              = local.api_container_port
       target_type       = "ip"
       create_attachment = false
 
@@ -102,11 +102,7 @@ module "alb" {
     }
   }
 
-  tags = {
-    Application = local.api_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
+  tags = local.tags
 }
 
 module "ecs" {
@@ -118,10 +114,10 @@ module "ecs" {
   services = {
     line_item_api = {
       name                   = "${local.name_prefix}-ecs-service"
-      desired_count          = 1 # should set to 2 or more for production
       launch_type            = "FARGATE"
-      cpu                    = local.container_cpu
-      memory                 = local.container_memory
+      desired_count          = local.api_container_count
+      cpu                    = local.api_container_cpu
+      memory                 = local.api_container_memory
 
       deployment_minimum_healthy_percent = 100
       deployment_maximum_percent         = 200
@@ -140,16 +136,16 @@ module "ecs" {
           portMappings = [
             {
               name          = "http"
-              containerPort = local.container_port
-              hostPort      = local.container_port
+              containerPort = local.api_container_port
+              hostPort      = local.api_container_port
               protocol      = "tcp"
             }
           ]
 
           environment = [
             {
-              name  = "ASPNETCORE_ENVIRONMENT"
-              value = "Development"
+              name  = "DOTNET_ENVIRONMENT"
+              value = local.api_environment
             },
             {
               name  = "DatabaseOptions__Host"
@@ -177,8 +173,8 @@ module "ecs" {
           ]
 
           enable_cloudwatch_logging              = true
-          cloudwatch_log_group_name              = "/ecs/${local.name_prefix}"
-          cloudwatch_log_group_retention_in_days = 30
+          cloudwatch_log_group_name              = "/ecs/${local.api_name}/${local.environment_stage}"
+          cloudwatch_log_group_retention_in_days = local.cloudwatch_log_retention_days
         }
       }
 
@@ -187,8 +183,8 @@ module "ecs" {
       security_group_ingress_rules = {
         load_balancer = {
           description                  = "Allow inbound traffic from load balancer."
-          from_port                    = local.container_port
-          to_port                      = local.container_port
+          from_port                    = local.api_container_port
+          to_port                      = local.api_container_port
           ip_protocol                  = "tcp"
           referenced_security_group_id = module.alb.security_group_id
         }
@@ -205,7 +201,7 @@ module "ecs" {
         service = {
           target_group_arn = module.alb.target_groups["ecs-tasks"].arn
           container_name   = local.api_name
-          container_port   = local.container_port
+          container_port   = local.api_container_port
         }
       }
 
@@ -224,16 +220,13 @@ module "ecs" {
     }
   }
 
-  tags = {
-    Application = local.api_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
+  tags = local.tags
 }
 
 resource "aws_cloudwatch_log_group" "migrations" {
   name              = "/ecs/${local.migrations_name}/${local.environment_stage}"
-  retention_in_days = 30
+  retention_in_days = local.cloudwatch_log_retention_days
+  tags = local.tags
 }
 
 resource "aws_ecs_task_definition" "migrations" {
@@ -249,11 +242,12 @@ resource "aws_ecs_task_definition" "migrations" {
       name      = local.migrations_name
       image     = "${data.terraform_remote_state.global.outputs.ecr_migrations_repository_url}:latest"
       essential = true
+      readonlyRootFilesystem = false
 
       environment = [
         {
           name  = "DOTNET_ENVIRONMENT"
-          value = "Development"
+          value = local.api_environment
         },
         {
           name  = "DatabaseOptions__Host"
@@ -291,11 +285,7 @@ resource "aws_ecs_task_definition" "migrations" {
     }
   ])
 
-  tags = {
-    Application = local.api_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
+  tags = local.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ecs_to_database" {
@@ -306,6 +296,8 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_to_database" {
   from_port   = data.terraform_remote_state.database.outputs.db_instance_port
   to_port     = data.terraform_remote_state.database.outputs.db_instance_port
   ip_protocol = "tcp"
+
+  tags = local.tags
 }
 
 module "auth0_api" {

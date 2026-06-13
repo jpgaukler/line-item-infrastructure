@@ -1,10 +1,5 @@
-variable "environment_stage" {
-  description = "Environment/stage name, such as dev, qa, prod."
-  type        = string
-}
-
-variable "app_name" {
-  description = "Application name used for naming resources."
+variable "name_prefix" {
+  description = "Prefix to use when naming resources."
   type        = string
 }
 
