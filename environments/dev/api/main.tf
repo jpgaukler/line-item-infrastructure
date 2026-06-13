@@ -9,7 +9,7 @@ module "alb" {
   enable_deletion_protection = false # allow deletion for dev
   route53_records = {
     A = {
-      zone_id = data.terraform_remote_state.global.outputs.route53_zone_id
+      zone_id = data.terraform_remote_state.global_route53.outputs.route53_zone_id
       name    = local.api_domain
       type    = "A"
     }
@@ -62,7 +62,7 @@ module "alb" {
     https = {
       port            = 443
       protocol        = "HTTPS"
-      certificate_arn = data.terraform_remote_state.global.outputs.acm_certificate_us_east_2_arn
+      certificate_arn = data.terraform_remote_state.global_route53.outputs.acm_certificate_us_east_2_arn
 
       forward = {
         target_group_key = "ecs-tasks"
@@ -129,7 +129,7 @@ module "ecs" {
       container_definitions = {
         api_container = {
           name      = local.api_name
-          image     = "${data.terraform_remote_state.global.outputs.ecr_api_repository_url}:latest"
+          image     = "${data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_url}:latest"
           essential = true
           readonlyRootFilesystem = false
 
@@ -240,7 +240,7 @@ resource "aws_ecs_task_definition" "migrations" {
   container_definitions = jsonencode([
     {
       name      = local.migrations_name
-      image     = "${data.terraform_remote_state.global.outputs.ecr_migrations_repository_url}:latest"
+      image     = "${data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_url}:latest"
       essential = true
       readonlyRootFilesystem = false
 

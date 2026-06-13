@@ -11,7 +11,7 @@ terraform {
   backend "s3" {
     region = "us-east-2"
     bucket = "line-item-terraform-state"
-    key = "environments/global/terraform.tfstate"
+    key = "environments/global/ecr/terraform.tfstate"
     encrypt      = true
     use_lockfile = true
   }
@@ -19,10 +19,4 @@ terraform {
 
 provider "aws" {
   region  = "us-east-2"
-}
-
-# Provider must be us-east-1 for AWS Certificate Manager certificates used by CloudFront
-provider "aws" {
-  region = "us-east-1"
-  alias  = "us_east_1"
 }

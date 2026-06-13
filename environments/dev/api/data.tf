@@ -18,15 +18,26 @@ data "terraform_remote_state" "app" {
   }
 }
 
-data "terraform_remote_state" "global" {
+data "terraform_remote_state" "global_route53" {
   backend = "s3"
 
   config = {
     bucket  = "line-item-terraform-state"
-    key     = "environments/global/terraform.tfstate"
+    key     = "environments/global/route53/terraform.tfstate"
     region  = "us-east-2"
   }
 }
+
+data "terraform_remote_state" "global_ecr" {
+  backend = "s3"
+
+  config = {
+    bucket  = "line-item-terraform-state"
+    key     = "environments/global/ecr/terraform.tfstate"
+    region  = "us-east-2"
+  }
+}
+
 
 data "terraform_remote_state" "database" {
   backend = "s3"
