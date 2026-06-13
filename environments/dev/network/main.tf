@@ -19,9 +19,5 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Application = local.app_name
-    Environment = local.environment_stage
-    ManagedBy   = "Terraform"
-  }
+  tags = local.tags
 }

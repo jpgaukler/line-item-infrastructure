@@ -9,10 +9,10 @@ module "rds_postgres_database" {
   major_engine_version       = "18"
   engine_version             = "18.4"
   auto_minor_version_upgrade = true
-  instance_class             = "db.t4g.micro"
+  instance_class             = local.db_instance_class
 
-  allocated_storage     = 20
-  max_allocated_storage = 20 # don't allow storage autoscaling for dev
+  allocated_storage     = local.db_storage
+  max_allocated_storage = local.db_max_storage_expansion
   storage_type          = "gp3"
   storage_encrypted     = true
 
@@ -31,9 +31,9 @@ module "rds_postgres_database" {
   publicly_accessible = false
   multi_az            = false
 
-  backup_retention_period = 1 # maximum allowed by aws free tier
-  backup_window      = "03:00-06:00"
-  maintenance_window = "Mon:00:00-Mon:03:00"
+  backup_retention_period = local.db_backup_retention_period
+  backup_window      = local.db_backup_window
+  maintenance_window = local.db_maintenance_window
 
   deletion_protection = false
   skip_final_snapshot = true # should be false in production (enables final db snapshot upon deleting db)
@@ -49,4 +49,8 @@ resource "aws_security_group" "database" {
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-database-sg"
   })
+  
+  lifecycle {
+    create_before_destroy = true
+  }
 }
