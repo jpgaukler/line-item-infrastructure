@@ -133,10 +133,9 @@ module "ecs" {
       container_definitions = {
         api_container = {
           name      = local.api_name
-          image     = "${data.terraform_remote_state.global.outputs.ecr_repository_url}:latest"
+          image     = "${data.terraform_remote_state.global.outputs.ecr_api_repository_url}:latest"
           essential = true
           readonlyRootFilesystem = false
-
 
           portMappings = [
             {
@@ -224,6 +223,73 @@ module "ecs" {
       ]
     }
   }
+
+  tags = {
+    Application = local.api_name
+    Environment = local.environment_stage
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "migrations" {
+  name              = "/ecs/${local.migrations_name}/${local.environment_stage}"
+  retention_in_days = 30
+}
+
+resource "aws_ecs_task_definition" "migrations" {
+  family                   = "${local.name_prefix}-migrations"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = local.migrations_cpu
+  memory                   = local.migrations_memory
+  execution_role_arn       = module.ecs.services["line_item_api"].task_exec_iam_role_arn
+
+  container_definitions = jsonencode([
+    {
+      name      = local.migrations_name
+      image     = "${data.terraform_remote_state.global.outputs.ecr_migrations_repository_url}:latest"
+      essential = true
+
+      environment = [
+        {
+          name  = "DOTNET_ENVIRONMENT"
+          value = "Development"
+        },
+        {
+          name  = "DatabaseOptions__Host"
+          value = data.terraform_remote_state.database.outputs.db_instance_address
+        },
+        {
+          name  = "DatabaseOptions__Port"
+          value = tostring(data.terraform_remote_state.database.outputs.db_instance_port)
+        },
+        {
+          name  = "DatabaseOptions__Database"
+          value = data.terraform_remote_state.database.outputs.db_instance_name
+        },
+      ]
+
+      secrets = [
+        {
+          name      = "DatabaseOptions__Username"
+          valueFrom = "${data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn}:username::"
+        },
+        {
+          name      = "DatabaseOptions__Password"
+          valueFrom = "${data.terraform_remote_state.database.outputs.db_instance_master_user_secret_arn}:password::"
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.migrations.name
+          "awslogs-region"        = data.aws_region.current.id
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
 
   tags = {
     Application = local.api_name

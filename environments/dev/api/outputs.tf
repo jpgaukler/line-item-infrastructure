@@ -7,3 +7,18 @@ output "auth0_api_audience" {
   value       = module.auth0_api.auth0_api_identifier
   description = "The unique identifier for the API, used as the 'audience' in Auth0 authentication flows"
 }
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name for the API environment."
+  value       = module.ecs.cluster_name
+}
+
+output "migrations_task_definition_family" {
+  description = "ECS task definition family for the migrations task."
+  value       = aws_ecs_task_definition.migrations.family
+}
+
+output "migrations_task_network_configuration" {
+  description = "Network configuration value for aws ecs run-task."
+  value       = "awsvpcConfiguration={subnets=[${join(",", data.terraform_remote_state.network.outputs.private_subnet_ids)}],securityGroups=[${module.ecs.services["line_item_api"].security_group_id}],assignPublicIp=DISABLED}"
+}

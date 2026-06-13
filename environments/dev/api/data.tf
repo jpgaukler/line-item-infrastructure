@@ -38,4 +38,6 @@ data "terraform_remote_state" "database" {
   }
 }
 
+data "aws_region" "current" {}
+
 data "auth0_tenant" "current" {}

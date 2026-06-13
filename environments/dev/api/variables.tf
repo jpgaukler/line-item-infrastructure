@@ -4,6 +4,10 @@ locals {
   api_name          = "line-item-api"
   api_domain        = "${local.environment_stage}.api.line-item.app"
 
+  migrations_name   = "line-item-migrations"
+  migrations_cpu    = 256
+  migrations_memory = 512
+
   container_cpu    = 256
   container_memory = 512
   container_port   = 8080
