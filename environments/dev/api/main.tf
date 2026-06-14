@@ -1,3 +1,6 @@
+# =============================================
+# Load Balancer
+# =============================================
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
@@ -105,6 +108,11 @@ module "alb" {
   tags = local.tags
 }
 
+
+
+# =============================================
+# ECS Service for API and Migrations
+# =============================================
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "7.5.0"
@@ -300,6 +308,12 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_to_database" {
   tags = local.tags
 }
 
+
+
+
+# =============================================
+# Auth0 API Server
+# =============================================
 module "auth0_api" {
   source = "../../../modules/auth0-api"
 
@@ -357,3 +371,22 @@ module "auth0_api" {
     }
   }
 }
+
+
+
+
+# =============================================
+# IAM User for GitHub Actions CI/CD
+# =============================================
+resource "aws_iam_policy" "github_actions_ecr_policy" {
+  name   = "${local.name_prefix}-github-actions-ecr-policy"
+  policy = data.aws_iam_policy_document.github_actions_ecr_policy_document.json
+
+  tags = local.tags
+}
+
+resource "aws_iam_user_policy_attachment" "github_actions_ecr_policy_attachment" {
+  user       = data.terraform_remote_state.global_iam.outputs.github_actions_user_name
+  policy_arn = aws_iam_policy.github_actions_ecr_policy.arn
+}
+

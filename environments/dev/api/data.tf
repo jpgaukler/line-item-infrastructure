@@ -38,6 +38,15 @@ data "terraform_remote_state" "global_ecr" {
   }
 }
 
+data "terraform_remote_state" "global_iam" {
+  backend = "s3"
+
+  config = {
+    bucket  = "line-item-terraform-state"
+    key     = "environments/global/iam/terraform.tfstate"
+    region  = "us-east-2"
+  }
+}
 
 data "terraform_remote_state" "database" {
   backend = "s3"
@@ -50,5 +59,67 @@ data "terraform_remote_state" "database" {
 }
 
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 data "auth0_tenant" "current" {}
+
+
+# grant IAM user permissions for Github actions workflow
+data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
+  # Authenticate with ECR
+  statement {
+    actions   = ["ecr:GetAuthorizationToken"]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+  
+  # Push/pull images from ECR
+  statement {
+    actions = [
+      "ecr:BatchGetImage",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:CompleteLayerUpload",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+    ]
+
+    effect    = "Allow"
+    resources = [
+      data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_arn,
+      data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_arn
+    ]
+  }
+
+  # Run migrations task
+  statement {
+    actions = ["ecs:RunTask"]
+    effect    = "Allow"
+    resources = [aws_ecs_task_definition.migrations.arn]
+  }
+  statement {
+    actions = ["iam:PassRole"]
+    effect    = "Allow"
+    resources = [module.ecs.services["line_item_api"].task_exec_iam_role_arn]
+  }
+  statement {
+    actions   = ["ecs:DescribeTasks"]
+    effect    = "Allow"
+    resources = ["arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task/${module.ecs.cluster_name}/*"]
+  }
+  statement {
+    actions = ["logs:FilterLogEvents"]
+    effect    = "Allow"
+    resources = ["${aws_cloudwatch_log_group.migrations.arn}:*"]
+  }
+
+  # statement {
+  #   actions = [
+  #     "ecs:UpdateService"
+  #   ]
+  # 
+  #   effect    = "Allow"
+  #   resources = [aws_ecs_express_gateway_service.app_service.service_arn]
+  # }
+}
