@@ -13,6 +13,21 @@ output "ecs_cluster_name" {
   value       = module.ecs.cluster_name
 }
 
+output "ecs_api_service_name" {
+  description = "Name of the ECS service for the API."
+  value       = module.ecs.services["line_item_api"].name
+}
+
+output "ecs_api_container_name" {
+  description = "Name of the ECS service for the API."
+  value       = module.ecs.services["line_item_api"].container_definitions["api_container"].container_definition.name
+}
+
+output "ecs_api_task_definition_family" {
+  description = "Family name of the ECS API task definition."
+  value       = module.ecs.services["line_item_api"].task_definition_family
+}
+
 output "migrations_task_definition_family" {
   description = "ECS task definition family for the migrations task."
   value       = aws_ecs_task_definition.migrations.family

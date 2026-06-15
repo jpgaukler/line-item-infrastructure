@@ -92,34 +92,63 @@ data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
     ]
   }
 
-  # Run migrations task
+  # Run ECS service and migration tasks
   statement {
-    actions = ["ecs:RunTask"]
+    actions = [
+      "ecs:RegisterTaskDefinition",
+      "ecs:DescribeTaskDefinition",
+    ]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+  statement {
+    actions = [
+      "ecs:TagResource"
+    ]
+    effect = "Allow"
+    resources = [
+      "arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task-definition/${module.ecs.services["line_item_api"].task_definition_family}:*"
+    ]
+  }
+  statement {
+    actions = [
+      "ecs:UpdateService",
+      "ecs:DescribeServices"
+    ]
+    effect    = "Allow"
+    resources = [
+      module.ecs.services["line_item_api"].id
+    ]
+  }
+  statement {
+    actions = [
+      "iam:PassRole"
+    ]
+    effect    = "Allow"
+    resources = [
+      module.ecs.services["line_item_api"].task_exec_iam_role_arn,
+      module.ecs.services["line_item_api"].tasks_iam_role_arn
+    ]
+  }
+  statement {
+    actions = [
+      "ecs:RunTask"
+    ]
     effect    = "Allow"
     resources = [aws_ecs_task_definition.migrations.arn]
   }
   statement {
-    actions = ["iam:PassRole"]
-    effect    = "Allow"
-    resources = [module.ecs.services["line_item_api"].task_exec_iam_role_arn]
-  }
-  statement {
-    actions   = ["ecs:DescribeTasks"]
+    actions   = [
+      "ecs:DescribeTasks"
+    ]
     effect    = "Allow"
     resources = ["arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task/${module.ecs.cluster_name}/*"]
   }
   statement {
-    actions = ["logs:FilterLogEvents"]
+    actions = [
+      "logs:FilterLogEvents"
+    ]
     effect    = "Allow"
     resources = ["${aws_cloudwatch_log_group.migrations.arn}:*"]
   }
-
-  # statement {
-  #   actions = [
-  #     "ecs:UpdateService"
-  #   ]
-  # 
-  #   effect    = "Allow"
-  #   resources = [aws_ecs_express_gateway_service.app_service.service_arn]
-  # }
 }
