@@ -107,7 +107,8 @@ data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
     ]
     effect = "Allow"
     resources = [
-      "arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task-definition/${module.ecs.services["line_item_api"].task_definition_family}:*"
+      "arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task-definition/${module.ecs.services["line_item_api"].task_definition_family}:*",
+      "arn:aws:ecs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:task-definition/${aws_ecs_task_definition.migrations.family}:*"
     ]
   }
   statement {
@@ -135,7 +136,7 @@ data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
       "ecs:RunTask"
     ]
     effect    = "Allow"
-    resources = [aws_ecs_task_definition.migrations.arn]
+    resources = ["${aws_ecs_task_definition.migrations.arn_without_revision}:*"]
   }
   statement {
     actions   = [

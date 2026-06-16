@@ -13,24 +13,39 @@ output "ecs_cluster_name" {
   value       = module.ecs.cluster_name
 }
 
-output "ecs_api_service_name" {
+output "api_service_name" {
   description = "Name of the ECS service for the API."
   value       = module.ecs.services["line_item_api"].name
 }
 
-output "ecs_api_container_name" {
+output "api_container_name" {
   description = "Name of the ECS service for the API."
   value       = module.ecs.services["line_item_api"].container_definitions["api_container"].container_definition.name
 }
 
-output "ecs_api_task_definition_family" {
+output "api_task_definition_family" {
   description = "Family name of the ECS API task definition."
   value       = module.ecs.services["line_item_api"].task_definition_family
+}
+
+output "migrations_container_name" {
+  description = "Name of the container for the migrations task."
+  value       = jsondecode(aws_ecs_task_definition.migrations.container_definitions)[0].name
 }
 
 output "migrations_task_definition_family" {
   description = "ECS task definition family for the migrations task."
   value       = aws_ecs_task_definition.migrations.family
+}
+
+output "migrations_task_subnet_ids" {
+  description = "Private subnet Ids for the migrations task as a comma-separated string."
+  value       = join(",", data.terraform_remote_state.network.outputs.private_subnet_ids)
+}
+
+output "migrations_task_security_group_ids" {
+  description = "Security group id for the migrations task."
+  value       = module.ecs.services["line_item_api"].security_group_id
 }
 
 output "migrations_task_network_configuration" {

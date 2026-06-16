@@ -121,6 +121,10 @@ module "ecs" {
 
   services = {
     line_item_api = {
+      # After initial creation, Github Actions is responsible for creating new task revisions,
+      # this option prevents Terraform from detecting infrastructure changes if the image tag changes.
+      ignore_task_definition_changes = true 
+      
       name                   = "${local.name_prefix}-ecs-service"
       launch_type            = "FARGATE"
       desired_count          = local.api_container_count
