@@ -137,10 +137,8 @@ module "ecs" {
       container_definitions = {
         api_container = {
           name      = local.api_name
-          image     = try(
-            jsondecode(data.aws_ecs_task_definition.current_api_revision.container_definitions)[0].image,
-            "${data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_url}:latest" // fallback to latest tag for initial creation
-          )
+          image     = jsondecode(data.aws_ecs_task_definition.current_api_revision.container_definitions)[0].image # image tag gets updated by Github Actions
+          # image     = "${data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_url}:latest" # uncomment for initial creation
           essential = true
           readonlyRootFilesystem = false
 
@@ -252,10 +250,8 @@ resource "aws_ecs_task_definition" "migrations" {
   container_definitions = jsonencode([
     {
       name      = local.migrations_name
-      image     = try(
-        jsondecode(data.aws_ecs_task_definition.current_migrations_revision.container_definitions)[0].image,
-        "${data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_url}:latest" // fallback to latest tag for initial creation
-      )
+      image     = jsondecode(data.aws_ecs_task_definition.current_migrations_revision.container_definitions)[0].image # image tag gets updated by Github Actions
+      # image     =  "${data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_url}:latest" # uncomment for initial creation
       essential = true
       readonlyRootFilesystem = false
 
