@@ -121,10 +121,6 @@ module "ecs" {
 
   services = {
     line_item_api = {
-      # After initial creation, Github Actions is responsible for creating new task revisions,
-      # this option prevents Terraform from detecting infrastructure changes if the image tag changes.
-      ignore_task_definition_changes = true 
-      
       name                   = "${local.name_prefix}-ecs-service"
       launch_type            = "FARGATE"
       desired_count          = local.api_container_count
@@ -141,7 +137,10 @@ module "ecs" {
       container_definitions = {
         api_container = {
           name      = local.api_name
-          image     = "${data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_url}:latest"
+          image     = try(
+            jsondecode(data.aws_ecs_task_definition.current_api_revision.container_definitions)[0].image,
+            "${data.terraform_remote_state.global_ecr.outputs.ecr_api_repository_url}:latest" // fallback to latest tag for initial creation
+          )
           essential = true
           readonlyRootFilesystem = false
 
@@ -248,11 +247,15 @@ resource "aws_ecs_task_definition" "migrations" {
   cpu                      = local.migrations_cpu
   memory                   = local.migrations_memory
   execution_role_arn       = module.ecs.services["line_item_api"].task_exec_iam_role_arn
+  track_latest             = true
 
   container_definitions = jsonencode([
     {
       name      = local.migrations_name
-      image     = "${data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_url}:latest"
+      image     = try(
+        jsondecode(data.aws_ecs_task_definition.current_migrations_revision.container_definitions)[0].image,
+        "${data.terraform_remote_state.global_ecr.outputs.ecr_migrations_repository_url}:latest" // fallback to latest tag for initial creation
+      )
       essential = true
       readonlyRootFilesystem = false
 

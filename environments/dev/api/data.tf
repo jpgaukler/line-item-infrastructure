@@ -58,11 +58,18 @@ data "terraform_remote_state" "database" {
   }
 }
 
+data "auth0_tenant" "current" {}
+
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
-data "auth0_tenant" "current" {}
+data "aws_ecs_task_definition" "current_api_revision" {
+  task_definition = "${local.name_prefix}-ecs-service"
+}
 
+data "aws_ecs_task_definition" "current_migrations_revision" {
+  task_definition = "${local.name_prefix}-migrations"
+}
 
 # grant IAM user permissions for Github actions workflow
 data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
@@ -153,3 +160,4 @@ data "aws_iam_policy_document" "github_actions_ecr_policy_document" {
     resources = ["${aws_cloudwatch_log_group.migrations.arn}:*"]
   }
 }
+
