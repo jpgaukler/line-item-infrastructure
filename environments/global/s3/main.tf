@@ -4,6 +4,10 @@ module "frontend_build_versions_bucket" {
 
   bucket = "${local.app_name}-frontend-build-versions"
 
+  versioning = {
+    enabled = true
+  }
+
   server_side_encryption_configuration = {
     rule = {
       bucket_key_enabled = true
