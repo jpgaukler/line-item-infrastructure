@@ -154,7 +154,7 @@ module "ecs" {
           environment = [
             {
               name  = "DOTNET_ENVIRONMENT"
-              value = local.api_environment
+              value = local.environment_stage
             },
             {
               name  = "DatabaseOptions__Host"
@@ -258,7 +258,7 @@ resource "aws_ecs_task_definition" "migrations" {
       environment = [
         {
           name  = "DOTNET_ENVIRONMENT"
-          value = local.api_environment
+          value = local.environment_stage
         },
         {
           name  = "DatabaseOptions__Host"

@@ -9,7 +9,6 @@ locals {
   api_container_cpu    = 256
   api_container_memory = 512
   api_container_port   = 8080
-  api_environment      = "Development"
 
   migrations_name   = "line-item-migrations"
   migrations_cpu    = 256
