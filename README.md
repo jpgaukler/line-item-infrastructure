@@ -1,4 +1,4 @@
-# line-item-infrastructure
+# Line Item Infrastructure
 
 Terraform infrastructure-as-code that provisions the complete AWS environment for **Line Item**, a full-stack web application (Angular SPA + .NET API + PostgreSQL). This repo is the "ops" half of the Line Item project: it stands up networking, compute, data, DNS/TLS, and CI/CD wiring so that application code shipped from GitHub Actions can be deployed with zero manual console work.
 
