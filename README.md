@@ -101,3 +101,8 @@ Each stack (`network`, `database`, `api`, `app`, and everything under `global/`)
 ## Tech stack
 
 Terraform · AWS (VPC, RDS, ECS Fargate, ALB, S3, CloudFront, Route 53, ACM, ECR, IAM, Secrets Manager) · Auth0 · GitHub Actions
+
+## Related projects
+
+- [line-item-api](https://github.com/jpgaukler/line-item-api) — the .NET API deployed onto the ECS Fargate service
+- [line-item-app](https://github.com/jpgaukler/line-item-app) — the Angular SPA deployed onto the S3/CloudFront stack
