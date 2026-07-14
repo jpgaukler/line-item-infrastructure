@@ -16,10 +16,7 @@ Terraform infrastructure-as-code that provisions the complete AWS environment fo
 
 ```mermaid
 flowchart TB
-    subgraph Internet
-        User((User Browser))
-        GHA[GitHub Actions CI/CD]
-    end
+    User((User Browser))
 
     subgraph "Route 53 + ACM"
         DNS[line-item.app hosted zone]
@@ -44,9 +41,6 @@ flowchart TB
     end
 
     S3SPA[S3: Angular SPA build]
-    S3VER[S3: Frontend build versions]
-    ECR[(ECR: api + migrations images)]
-    SM[Secrets Manager: DB + Auth0 creds]
     AUTH0[Auth0 Tenant]
 
     User -->|HTTPS| DNS
@@ -58,18 +52,8 @@ flowchart TB
     ALB --> ECS
     ECS --> RDS
     MIG --> RDS
-    ECS -.-> SM
-    MIG -.-> SM
-    ECS -->|internet via NAT| NAT
-    ECS -.->|validate tokens| AUTH0
-
-    GHA -->|push images| ECR
-    GHA -->|deploy SPA| S3SPA
-    GHA -->|version build| S3VER
-    GHA -->|register task def + update service| ECS
-    GHA -->|run task| MIG
-    ECR -.->|image ref| ECS
-    ECR -.->|image ref| MIG
+    ECS --> NAT
+    NAT -.->|validate auth tokens| AUTH0
 ```
 
 **Request flow:** Browser hits `api.line-item.app` / `line-item.app` → Route 53 → ALB (API) or CloudFront (SPA) → ECS Fargate tasks in private subnets → RDS Postgres in an isolated, internet-less subnet. Auth is offloaded entirely to Auth0 (OIDC); the API validates access tokens issued against the Auth0-managed resource server.
